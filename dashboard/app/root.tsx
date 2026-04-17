@@ -10,6 +10,7 @@ import {
 import type { Route } from "./+types/root"
 import "./app.css"
 import { AuthProvider } from "./providers/AuthProvider"
+import { TooltipProvider } from "./components/ui/tooltip"
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -21,11 +22,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body className="min-h-svh">
-        <AuthProvider>
-          {children}
-          <ScrollRestoration />
-          <Scripts />
-        </AuthProvider>
+        <TooltipProvider>
+          <AuthProvider>
+            {children}
+            <ScrollRestoration />
+            <Scripts />
+          </AuthProvider>
+        </TooltipProvider>
       </body>
     </html>
   )
