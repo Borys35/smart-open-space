@@ -27,7 +27,10 @@
     "paths": {
       "~/*": [
         "./app/*"
-      ]
+      ],
+      "@/*": [
+        "./app/*"
+      ],
     },
     "esModuleInterop": true,
     "verbatimModuleSyntax": true,
