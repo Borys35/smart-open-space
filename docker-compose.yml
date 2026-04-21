@@ -1,0 +1,33 @@
+services:
+  dashboard:
+    build: ./dashboard
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./dashboard:/app
+      - /app/node_modules
+    environment:
+      - ENV=development
+      # - CHOKIDAR_USEPOLLING=true
+      - VITE_USE_POLLING=true
+    networks:
+      - app-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - DATABASE_URL=connection_string
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
