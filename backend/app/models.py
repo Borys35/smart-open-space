@@ -1,42 +1,25 @@
-from pydantic import BaseModel
-from enum import Enum
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
+from sqlalchemy.orm import relationship
+from database import Base
 
-# Role użytkowników w systemie
-class Role(str, Enum):
-    USER = "USER"
-    MANAGER = "MANAGER"
-    SUPER_ADMIN = "SUPER_ADMIN"
+class User(Base):
+    __tablename__ = "users"
+    
+    id = Column(Integer, primary_key = True, index = True)
+    username = Column(String(25), unique = True, nullable = False)
+    email = Column(String, unique = True, nullable = False)
+    password_hash = Column(String, nullable = False)
+    role_id = Column(Integer, ForeignKey("roles.id"), nullable = False)
+    is_active = Column(Boolean, default = True)
 
-# Request do rejestracji
-class RegisterRequest(BaseModel):
-    name: str
-    email: str
-    password: str
+    role = relationship("Role", back_populates = "users")
 
-# Response użytkownika (bez hasła)
-class UserResponse(BaseModel):
-    id: int
-    name: str
-    email: str
-    role: Role
+class Role(Base):
+    __tablename__ = "roles"
 
-# Request do logowania
-class LoginRequest(BaseModel):
-    email: str
-    password: str
+    id = Column(Integer, primary_key = True, index = True)
+    name = Column(String, nullable = False, unique = True)
 
-# Response logowania (mobile)
-class LoginResponse(BaseModel):
-    access_token: str
-    user: UserResponse
+    users = relationship("User", back_populates = "role")
 
-# Response użytkownika dla dashboardu (bez id)
-class DashboardUserResponse(BaseModel):
-    name: str
-    email: str
-    role: Role
 
-# Response logowania do dashboardu
-class DashboardLoginResponse(BaseModel):
-    access_token: str
-    user: DashboardUserResponse
