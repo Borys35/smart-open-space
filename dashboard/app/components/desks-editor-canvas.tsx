@@ -1,11 +1,11 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 export type Desk = {
-    id: string;
+    id: number;
     x: number;
     y: number;
     width: number;
@@ -13,39 +13,23 @@ export type Desk = {
     data: string;
 };
 
-export function DesksEditorCanvas() {
-    const [desks, setDesks] = useState<Desk[]>([]);
-    const [selectedDeskId, setSelectedDeskId] = useState<string | null>(null);
+type DesksEditorCanvasProps = {
+    desks: Desk[];
+    setDesks: React.Dispatch<React.SetStateAction<Desk[]>>;
+    overlappingDesks: Set<number>;
+};
+
+export function DesksEditorCanvas({ desks, setDesks, overlappingDesks }: DesksEditorCanvasProps) {
+    const [selectedDeskId, setSelectedDeskId] = useState<number | null>(null);
 
     // Dragging state
-    const [draggingId, setDraggingId] = useState<string | null>(null);
+    const [draggingId, setDraggingId] = useState<number | null>(null);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // Check for collisions
-    const overlappingDesks = useMemo(() => {
-        const overlaps = new Set<string>();
-        for (let i = 0; i < desks.length; i++) {
-            for (let j = i + 1; j < desks.length; j++) {
-                const d1 = desks[i];
-                const d2 = desks[j];
-                if (
-                    d1.x < d2.x + d2.width &&
-                    d1.x + d1.width > d2.x &&
-                    d1.y < d2.y + d2.height &&
-                    d1.y + d1.height > d2.y
-                ) {
-                    overlaps.add(d1.id);
-                    overlaps.add(d2.id);
-                }
-            }
-        }
-        return overlaps;
-    }, [desks]);
-
     const addDesk = () => {
         const newDesk: Desk = {
-            id: Math.random().toString(36).substr(2, 9),
+            id: Math.random() * 1000000,
             x: 50,
             y: 50,
             width: 100,
@@ -56,18 +40,18 @@ export function DesksEditorCanvas() {
         setSelectedDeskId(newDesk.id);
     };
 
-    const deleteDesk = (id: string) => {
+    const deleteDesk = (id: number) => {
         setDesks((prev) => prev.filter((d) => d.id !== id));
         if (selectedDeskId === id) setSelectedDeskId(null);
     };
 
-    const updateDeskData = (id: string, newData: string) => {
+    const updateDeskData = (id: number, newData: string) => {
         setDesks((prev) =>
             prev.map((d) => (d.id === id ? { ...d, data: newData } : d))
         );
     };
 
-    const handlePointerDown = (e: React.PointerEvent, id: string) => {
+    const handlePointerDown = (e: React.PointerEvent, id: number) => {
         e.stopPropagation();
         const target = e.currentTarget as HTMLElement;
         target.setPointerCapture(e.pointerId);

@@ -17,7 +17,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "~/components/ui/sidebar"
-import { ChevronsUpDownIcon, Plus, PlusIcon } from "lucide-react"
+import { ChevronLeft, ChevronRight, ChevronsUpDownIcon, GroupIcon, Plus, PlusIcon } from "lucide-react"
 import { useAuth } from "~/providers/AuthProvider"
 import { OpenSpaceDialog } from "./open-space-dialog"
 import { Link } from "react-router"
@@ -27,7 +27,6 @@ export function OpenSpaceSwitcher({
 }: {
   teams: {
     name: string
-    logo: React.ReactNode
     plan: string
   }[]
 }) {
@@ -49,7 +48,7 @@ export function OpenSpaceSwitcher({
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                {activeTeam.logo}
+                <GroupIcon />
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{activeTeam.name}</span>
@@ -68,17 +67,18 @@ export function OpenSpaceSwitcher({
               Open Spaces
             </DropdownMenuLabel>
             {teams.map((team, index) => (
-              <DropdownMenuItem
-                key={team.name}
-                onClick={() => setActiveTeam(team)}
-                className="gap-2 p-2"
-              >
-                <div className="flex size-6 items-center justify-center rounded-md border">
-                  {team.logo}
-                </div>
-                {team.name}
-                <DropdownMenuShortcut>⌘{index + 1}</DropdownMenuShortcut>
-              </DropdownMenuItem>
+              <Link to={"/"} key={index}>
+                <DropdownMenuItem
+                  key={team.name}
+                  onClick={() => setActiveTeam(team)}
+                  className="gap-2 p-2"
+                >
+                  <div className="">
+                    <ChevronRight />
+                  </div>
+                  {team.name}
+                </DropdownMenuItem>
+              </Link>
             ))}
             {user?.role === "SUPER_ADMIN" && (
               <>
