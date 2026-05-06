@@ -13,6 +13,7 @@ export default function Home() {
             <ul className="list-disc pl-5 underline text-blue-600">
                 <li><Link to="/open-spaces/create">Create new Open Space (for SUPER_ADMIN only)</Link></li>
                 <li><Link to="/desks/editor">Interactive desks editor</Link></li>
+                <li><Link to="/users/invite">Invite user form</Link></li>
             </ul>
         </div>
     )

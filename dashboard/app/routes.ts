@@ -12,7 +12,10 @@ export default [
             ]),
             ...prefix("desks", [
                 route("editor", "routes/dashboard/desks/editor.tsx"),
-            ])
+            ]),
+            ...prefix("users", [
+                route("invite", "routes/dashboard/users/invite.tsx"),
+            ]),
         ])
     ]),
 ] satisfies RouteConfig

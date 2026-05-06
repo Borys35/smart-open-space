@@ -73,8 +73,8 @@ const data = {
           url: "#",
         },
         {
-          title: "Add user",
-          url: "#",
+          title: "Invite user",
+          url: "/users/invite",
         },
       ],
     },
