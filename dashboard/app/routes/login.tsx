@@ -1,6 +1,6 @@
 "use client"
 
-import { LoginForm } from "~/components/login-form"
+import { LoginForm } from "~/components/forms/login-form"
 import { GalleryVerticalEndIcon } from "lucide-react"
 
 export default function LoginPage() {
@@ -26,6 +26,7 @@ export default function LoginPage() {
                     src="/login.jpg"
                     alt="Image"
                     className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
+
                 />
             </div>
         </div>

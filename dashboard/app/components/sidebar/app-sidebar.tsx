@@ -2,10 +2,10 @@
 
 import * as React from "react"
 
-import { NavMain } from "~/components/nav-main"
-import { NavProjects } from "~/components/nav-projects"
-import { NavUser } from "~/components/nav-user"
-import { OpenSpaceSwitcher } from "~/components/open-space-switcher"
+import { NavMain } from "~/components/sidebar/nav-main"
+import { NavProjects } from "~/components/sidebar/nav-projects"
+import { NavUser } from "~/components/sidebar/nav-user"
+import { OpenSpaceSwitcher } from "~/components/sidebar/open-space-switcher"
 import {
   Sidebar,
   SidebarContent,

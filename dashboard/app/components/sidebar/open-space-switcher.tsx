@@ -19,6 +19,8 @@ import {
 } from "~/components/ui/sidebar"
 import { ChevronsUpDownIcon, Plus, PlusIcon } from "lucide-react"
 import { useAuth } from "~/providers/AuthProvider"
+import { OpenSpaceDialog } from "./open-space-dialog"
+import { Link } from "react-router"
 
 export function OpenSpaceSwitcher({
   teams,
@@ -81,12 +83,14 @@ export function OpenSpaceSwitcher({
             {user?.role === "SUPER_ADMIN" && (
               <>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="gap-2 p-2">
-                  <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
-                    <Plus className="size-4" />
-                  </div>
-                  <div className="font-medium text-muted-foreground">Create new</div>
-                </DropdownMenuItem>
+                <Link to="/open-spaces/create">
+                  <DropdownMenuItem className="gap-2 p-2">
+                    <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
+                      <Plus className="size-4" />
+                    </div>
+                    <div className="font-medium text-muted-foreground">Create new</div>
+                  </DropdownMenuItem>
+                </Link>
               </>
             )}
           </DropdownMenuContent>
