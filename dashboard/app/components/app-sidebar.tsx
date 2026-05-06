@@ -5,7 +5,7 @@ import * as React from "react"
 import { NavMain } from "~/components/nav-main"
 import { NavProjects } from "~/components/nav-projects"
 import { NavUser } from "~/components/nav-user"
-import { TeamSwitcher } from "~/components/team-switcher"
+import { OpenSpaceSwitcher } from "~/components/open-space-switcher"
 import {
   Sidebar,
   SidebarContent,
@@ -13,15 +13,11 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "~/components/ui/sidebar"
-import { GalleryVerticalEndIcon, AudioLinesIcon, TerminalIcon, TerminalSquareIcon, BotIcon, BookOpenIcon, Settings2Icon, FrameIcon, PieChartIcon, MapIcon } from "lucide-react"
+import { GalleryVerticalEndIcon, AudioLinesIcon, TerminalIcon, TerminalSquareIcon, BotIcon, BookOpenIcon, Settings2Icon, FrameIcon, PieChartIcon, MapIcon, Workflow } from "lucide-react"
+import { useAuth } from "~/providers/AuthProvider"
 
 // This is sample data.
 const data = {
-  user: {
-    name: "Super Admin",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
   teams: [
     {
       name: "PWr D23",
@@ -50,7 +46,7 @@ const data = {
   ],
   navMain: [
     {
-      title: "Playground",
+      title: "Users",
       url: "#",
       icon: (
         <TerminalSquareIcon
@@ -59,43 +55,34 @@ const data = {
       isActive: true,
       items: [
         {
-          title: "History",
+          title: "All users",
           url: "#",
         },
         {
-          title: "Starred",
-          url: "#",
-        },
-        {
-          title: "Settings",
+          title: "Add user",
           url: "#",
         },
       ],
     },
     {
-      title: "Models",
+      title: "Desks",
       url: "#",
       icon: (
-        <BotIcon
-        />
+        <Workflow />
       ),
       items: [
         {
-          title: "Genesis",
+          title: "Live view",
           url: "#",
         },
         {
-          title: "Explorer",
-          url: "#",
-        },
-        {
-          title: "Quantum",
+          title: "Creator",
           url: "#",
         },
       ],
     },
     {
-      title: "Documentation",
+      title: "Reservations",
       url: "#",
       icon: (
         <BookOpenIcon
@@ -103,19 +90,15 @@ const data = {
       ),
       items: [
         {
-          title: "Introduction",
+          title: "All reservations",
           url: "#",
         },
         {
-          title: "Get Started",
+          title: "Calendar",
           url: "#",
         },
         {
-          title: "Tutorials",
-          url: "#",
-        },
-        {
-          title: "Changelog",
+          title: "Create reservation",
           url: "#",
         },
       ],
@@ -130,10 +113,6 @@ const data = {
       items: [
         {
           title: "General",
-          url: "#",
-        },
-        {
-          title: "Team",
           url: "#",
         },
         {
@@ -176,17 +155,19 @@ const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { user } = useAuth();
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TeamSwitcher teams={data.teams} />
+        <OpenSpaceSwitcher teams={data.teams} />
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
         {/* <NavProjects projects={data.projects} /> */}
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={user} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
