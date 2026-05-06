@@ -10,6 +10,9 @@ export default [
             ...prefix("open-spaces", [
                 route("create", "routes/dashboard/open-spaces/create.tsx"),
             ]),
+            ...prefix("desks", [
+                route("editor", "routes/dashboard/desks/editor.tsx"),
+            ])
         ])
     ]),
 ] satisfies RouteConfig

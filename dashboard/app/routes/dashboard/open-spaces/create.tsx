@@ -7,8 +7,9 @@ export const handle = {
 
 export default function OpenSpaceCreate() {
     return (
-        <div className="flex h-full w-full items-center justify-center p-6 md:p-10">
-            <div className="w-full max-w-sm">
+        <div className="flex flex-col h-full w-full p-4 md:p-6 lg:p-10">
+            <h1 className="text-2xl font-bold mb-6">Create Open Space</h1>
+            <div className="w-lg self-center pt-8">
                 <CreateOpenSpaceForm />
             </div>
         </div>

@@ -13,7 +13,7 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "~/components/ui/sidebar"
-import { GalleryVerticalEndIcon, AudioLinesIcon, TerminalIcon, TerminalSquareIcon, BotIcon, BookOpenIcon, Settings2Icon, FrameIcon, PieChartIcon, MapIcon, Workflow } from "lucide-react"
+import { GalleryVerticalEndIcon, AudioLinesIcon, TerminalIcon, TerminalSquareIcon, BotIcon, BookOpenIcon, Settings2Icon, FrameIcon, PieChartIcon, MapIcon, Workflow, HomeIcon } from "lucide-react"
 import { useAuth } from "~/providers/AuthProvider"
 
 // This is sample data.
@@ -46,13 +46,27 @@ const data = {
   ],
   navMain: [
     {
+      title: "General",
+      url: "#",
+      icon: (
+        <HomeIcon
+        />
+      ),
+      isActive: true,
+      items: [
+        {
+          title: "Home",
+          url: "/",
+        },
+      ],
+    },
+    {
       title: "Users",
       url: "#",
       icon: (
         <TerminalSquareIcon
         />
       ),
-      isActive: true,
       items: [
         {
           title: "All users",
@@ -76,8 +90,8 @@ const data = {
           url: "#",
         },
         {
-          title: "Creator",
-          url: "#",
+          title: "Editor",
+          url: "/desks/editor",
         },
       ],
     },
