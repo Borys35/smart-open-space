@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate, Outlet, Navigate } from "react-router";
 import { useAuth } from "../../providers/AuthProvider";
-import { Loading } from "../loading";
+import { Loading } from "../sidebar/loading";
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
     const { user, loading } = useAuth();

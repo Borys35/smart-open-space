@@ -11,6 +11,7 @@ import type { Route } from "./+types/root"
 import "./app.css"
 import { AuthProvider } from "./providers/AuthProvider"
 import { TooltipProvider } from "./components/ui/tooltip"
+import { Toaster } from "./components/ui/sonner"
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -24,6 +25,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <body className="min-h-svh">
         <TooltipProvider>
           <AuthProvider>
+            <Toaster position="top-center" />
             {children}
             <ScrollRestoration />
             <Scripts />

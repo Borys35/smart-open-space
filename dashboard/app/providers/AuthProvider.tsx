@@ -1,14 +1,15 @@
 import { createContext, useContext, useState, useEffect, useMemo } from "react";
 import { Outlet, useNavigate } from "react-router";
 
-interface UserType {
+export interface UserType {
     name: string;
     email: string;
-    role: string;
+    role: "SUPER_ADMIN" | "MANAGER" | "USER";
 }
 
 interface AuthContextType {
     loading: boolean;
+    accessToken?: string;
     user: UserType | null;
     login: (accessToken: string, user: UserType) => Promise<void>;
     logout: () => void;
@@ -16,6 +17,7 @@ interface AuthContextType {
 
 const defaultValue: AuthContextType = {
     loading: true,
+    accessToken: undefined,
     user: null,
     login: async () => { },
     logout: () => { }
@@ -26,31 +28,49 @@ export const useAuth = () => useContext(AuthContext);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState(defaultValue.user);
+    const [accessToken, setAccessToken] = useState<string | undefined>(defaultValue.accessToken);
     const [loading, setLoading] = useState(true);
 
+    // useEffect(() => {
+    //     fetch("/api/me", {
+    //         credentials: "include",
+    //         headers: {
+    //             authorization: "Bearer " + localStorage.getItem("accessToken"),
+    //         },
+    //     })
+    //         .then((res) => {
+    //             if (!res.ok) {
+    //                 throw new Error("Failed to fetch user");
+    //             }
+    //             return res.json()
+    //         })
+    //         .then((data) => {
+    //             console.log("Fetched user data:", data);
+    //             setUser(data);
+    //             setLoading(false);
+    //         })
+    //         .catch((err) => {
+    //             localStorage.removeItem("accessToken")
+    //             console.error("Failed to fetch user:", err);
+    //             setLoading(false);
+    //         });
+    // }, []);
     useEffect(() => {
-        fetch("/api/me", {
-            credentials: "include",
-            headers: {
-                authorization: "Bearer " + localStorage.getItem("accessToken"),
-            },
-        })
-            .then((res) => {
-                if (!res.ok) {
-                    throw new Error("Failed to fetch user");
-                }
-                return res.json()
-            })
-            .then((data) => {
-                console.log("Fetched user data:", data);
-                setUser(data);
-                setLoading(false);
-            })
-            .catch((err) => {
-                localStorage.removeItem("accessToken")
-                console.error("Failed to fetch user:", err);
-                setLoading(false);
-            });
+        console.log("Checking authentication...");
+        const token = localStorage.getItem("accessToken");
+        console.log("Access token:", token);
+        if (!token) {
+            setLoading(false);
+            return;
+        }
+        setUser({
+            name: "Super Admin",
+            email: "superadmin@test.com",
+            role: "SUPER_ADMIN"
+        });
+        setAccessToken(token);
+        setLoading(false);
+
     }, []);
 
     const navigate = useNavigate();
@@ -69,8 +89,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             navigate("/login", { replace: true });
         };
 
-        return { user, login, logout, loading };
-    }, [user, navigate, setUser, loading]);
+        return { user, accessToken, login, logout, loading };
+    }, [user, accessToken, navigate, setUser, loading]);
 
     return (
         <AuthContext value={value}>
