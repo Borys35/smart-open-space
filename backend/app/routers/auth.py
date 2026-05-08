@@ -21,7 +21,7 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
     existing_user = db.query(User).filter(User.email == data.email).first()
 
     if existing_user:
-        raise HTTPException(status_code = 400, detail = "User exist")
+        raise HTTPException(status_code = 400, detail = "User exists")
     
     user_role = db.query(Role).filter(Role.name == "USER").first()
 

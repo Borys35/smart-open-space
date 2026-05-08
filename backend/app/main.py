@@ -38,7 +38,7 @@ def get_db():
 
 @app.get("/")
 def root():
-    return {"message": "Backend działa"}
+    return {"message": "Backend work"}
 
 @app.get("/users")
 def get_users(db: Session = Depends(get_db)):
