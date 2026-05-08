@@ -36,7 +36,7 @@ CREATE TABLE roles (
 -- użytkownicy
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
-    username varchar(25) NOT NULL UNIQUE,
+    username varchar(50) NOT NULL,
     email varchar(255) NOT NULL UNIQUE,
     password_hash varchar(100) NOT NULL,
     role_id int NOT NULL REFERENCES roles(id),
