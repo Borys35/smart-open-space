@@ -5,7 +5,7 @@ from app.dependencies import get_db, require_roles
 from app.models import User, Role
 from app.schemas import UserResponse, UpdateUserRoleRequest
 
-router = APIRouter(prefix="/api/users", tags=["ueser"])
+router = APIRouter(prefix="/api/users", tags=["user"])
 
 @router.get("", response_model=list[UserResponse])
 def get_users(db: Session = Depends(get_db), current_user: User = Depends(require_roles(["SUPER_ADMIN"]))):

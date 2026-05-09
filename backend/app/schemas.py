@@ -74,7 +74,71 @@ class DashboardLoginResponse(BaseModel):
     token_type: str
     user: DashboardUserResponse
 
-# 
 class UpdateUserRoleRequest(BaseModel):
     role: RoleEnum
 
+class DashboardOpenSpaceCreate(BaseModel):
+    name: str
+    building: str
+    floor: int
+
+    @field_validator("name")
+    @classmethod
+    def validate_not_empty(cls, value) -> str:
+        value = value.strip()
+
+        if not value:
+            raise ValueError("Field cannot be empty")
+        
+        if len(value) > 100:
+            raise ValueError("Name must be at most 100 characters long")
+        
+        return value
+    
+    @field_validator("building")
+    @classmethod
+    def validate_building(cls, value) -> str:
+        value = value.strip()
+
+        if not value:
+            raise ValueError("Building cannot be empty")
+        
+        if len(value) > 50:
+            raise ValueError("Building must be at most 50 characters long")
+        
+        return value
+    
+    @field_validator("floor")
+    @classmethod
+    def validate_floor(cls, value) -> int:
+        if value < 0:
+            raise ValueError("Floor cannot be negative")
+        
+        return value
+    
+class DashboardOpenSpaceResponse(BaseModel):
+    id: int 
+    name: str
+    building: str
+    floor: int
+
+class DeskLayoutItem(BaseModel):
+    id: int | None = None
+    x: float
+    y: float
+    width: float
+    height: float
+
+    @field_validator("width", "height")
+    @classmethod
+    def validate_size(cls, value) -> float:
+        if value <= 0:
+            raise ValueError("Width and height must be greater than 0")
+        
+        return value
+    
+class InviteUserRequest(BaseModel):
+    email: EmailStr
+
+class MessageResponse(BaseModel):
+    message: str
