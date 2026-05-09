@@ -2,6 +2,8 @@ fastapi
 uvicorn
 pydantic
 sqlalchemy 
-psycopg2-binary
+psycopg2-binary  #tymczasowo
 passlib[bcrypt]
 bcrypt == 4.0.1
+python-jose[cryptography]
+email-validator 

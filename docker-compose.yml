@@ -11,6 +11,12 @@ services:
     volumes:
       - db-data:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
     networks:
       - app-network
 
@@ -34,13 +40,17 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     depends_on:
-      - db
+      db:
+        condition: service_healthy 
     ports:
       - "${BACKEND_PORT}:8000"
     volumes:
       - ./backend:/app
     environment:
       - DATABASE_URL=${DATABASE_URL}
+      - SECRET_KEY=${SECRET_KEY}
+      - ALGORITHM=${ALGORITHM}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
     networks:
       - app-network
 

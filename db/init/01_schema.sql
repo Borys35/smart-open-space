@@ -36,7 +36,7 @@ CREATE TABLE roles (
 -- użytkownicy
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
-    username varchar(25) NOT NULL UNIQUE,
+    username varchar(50) NOT NULL,
     email varchar(255) NOT NULL UNIQUE,
     password_hash varchar(100) NOT NULL,
     role_id int NOT NULL REFERENCES roles(id),
@@ -50,40 +50,63 @@ CREATE TABLE open_spaces (
     id SERIAL PRIMARY KEY,
     name varchar(100) NOT NULL,
     floor int NOT NULL,
-    building varchar(50),
-    manager_id int NOT NULL REFERENCES users(id),
-    credits_per_hour int NOT NULL CHECK (credits_per_hour > 0),
-    max_daily_hours int NOT NULL CHECK (max_daily_hours > 0),
+    building varchar(50) NOT NULL,
+    credits_per_hour int NOT NULL DEFAULT 1 CHECK (credits_per_hour > 0),
+    max_daily_hours int NOT NULL DEFAULT 8 CHECK (max_daily_hours > 0),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+
+    UNIQUE (building, name)
+);
+
+-- managerowie open-spaców
+CREATE TABLE open_space_managers (
+    id SERIAL PRIMARY KEY,
+    open_space_id int NOT NULL REFERENCES open_spaces(id),
+    user_id int NOT NULL REFERENCES users(id),
+    assigned_by int REFERENCES users(id),
+    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    unassigned_at TIMESTAMP,
     is_active BOOLEAN NOT NULL DEFAULT TRUE
 );
+
+-- indeks do pilnowania zasady: open-space ma tylko jednego managera
+CREATE UNIQUE INDEX unique_active_manager_per_open_space
+ON open_space_managers(open_space_id)
+WHERE is_active = TRUE;
 
 -- biurka 
 CREATE TABLE desks (
     id SERIAL PRIMARY KEY,
     open_space_id int NOT NULL REFERENCES open_spaces(id),
-    name varchar(50) NOT NULL,
-    status desk_status NOT NULL,
+    x float NOT NULL,
+    y float NOT NULL,
+    width float NOT NULL CHECK (width > 0),
+    height float NOT NULL CHECK (height > 0),
+    status desk_status NOT NULL DEFAULT 'AVAILABLE',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    UNIQUE (open_space_id, name)
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- zaproszenia 
 CREATE TABLE invitations (
     id SERIAL PRIMARY KEY,
     open_space_id int NOT NULL REFERENCES open_spaces(id),
-    invited_user_id int NOT NULL REFERENCES users(id),
+    invited_email varchar(255) NOT NULL,
+    invited_user_id int REFERENCES users(id),
     invited_by int NOT NULL REFERENCES users(id),
     status invitation_status NOT NULL DEFAULT 'PENDING',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     responded_at TIMESTAMP,
     expires_at TIMESTAMP NOT NULL DEFAULT (CURRENT_TIMESTAMP + INTERVAL '7 days'),
 
-    CHECK (invited_user_id <> invited_by)
+    CHECK (invited_user_id IS NULL OR invited_user_id <> invited_by)
 );
+
+CREATE UNIQUE INDEX unique_pending_invitation_per_email
+ON invitations(open_space_id, invited_email)
+WHERE status = 'PENDING'; 
 
 -- członkostwo
 CREATE TABLE memberships (

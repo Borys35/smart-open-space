@@ -1,12 +1,14 @@
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
-from database import SessionLocal, engine, Base
-from models import User, Role
-from routers import auth
+from app.database import SessionLocal, engine, Base
+from app.models import User, Role
+from app.routers import auth, users, open_spaces
 
 app = FastAPI()
 
 app.include_router(auth.router)
+app.include_router(users.router)
+app.include_router(open_spaces.router)
 
 @app.on_event("startup")
 def on_startup():
@@ -38,7 +40,7 @@ def get_db():
 
 @app.get("/")
 def root():
-    return {"message": "Backend działa"}
+    return {"message": "Backend work"}
 
 @app.get("/users")
 def get_users(db: Session = Depends(get_db)):
