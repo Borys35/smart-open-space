@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from app.models import User, Role
 from app.schemas import RegisterRequest, UserResponse, LoginRequest, LoginResponse, DashboardLoginResponse 
@@ -32,7 +33,14 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
     )
 
     db.add(new_user)
-    db.commit()
+
+    try:
+        db.commit()
+    
+    except:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Email already exists")
+    
     db.refresh(new_user)
 
     return {
