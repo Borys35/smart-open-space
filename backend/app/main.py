@@ -2,11 +2,12 @@ from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 from app.database import SessionLocal, engine, Base
 from app.models import User, Role
-from app.routers import auth
+from app.routers import auth, users
 
 app = FastAPI()
 
 app.include_router(auth.router)
+app.include_router(users.router)
 
 @app.on_event("startup")
 def on_startup():

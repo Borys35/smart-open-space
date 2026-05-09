@@ -73,3 +73,8 @@ class DashboardLoginResponse(BaseModel):
     access_token: str
     token_type: str
     user: DashboardUserResponse
+
+# 
+class UpdateUserRoleRequest(BaseModel):
+    role: RoleEnum
+
