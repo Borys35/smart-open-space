@@ -31,46 +31,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [accessToken, setAccessToken] = useState<string | undefined>(defaultValue.accessToken);
     const [loading, setLoading] = useState(true);
 
-    // useEffect(() => {
-    //     fetch("/api/me", {
-    //         credentials: "include",
-    //         headers: {
-    //             authorization: "Bearer " + localStorage.getItem("accessToken"),
-    //         },
-    //     })
-    //         .then((res) => {
-    //             if (!res.ok) {
-    //                 throw new Error("Failed to fetch user");
-    //             }
-    //             return res.json()
-    //         })
-    //         .then((data) => {
-    //             console.log("Fetched user data:", data);
-    //             setUser(data);
-    //             setLoading(false);
-    //         })
-    //         .catch((err) => {
-    //             localStorage.removeItem("accessToken")
-    //             console.error("Failed to fetch user:", err);
-    //             setLoading(false);
-    //         });
-    // }, []);
     useEffect(() => {
-        console.log("Checking authentication...");
-        const token = localStorage.getItem("accessToken");
-        console.log("Access token:", token);
-        if (!token) {
-            setLoading(false);
-            return;
-        }
-        setUser({
-            name: "Super Admin",
-            email: "superadmin@test.com",
-            role: "SUPER_ADMIN"
-        });
-        setAccessToken(token);
-        setLoading(false);
-
+        fetch("/api/me", {
+            credentials: "include",
+            headers: {
+                authorization: "Bearer " + localStorage.getItem("accessToken"),
+            },
+        })
+            .then((res) => {
+                if (!res.ok) {
+                    throw new Error("Failed to fetch user");
+                }
+                return res.json()
+            })
+            .then((data) => {
+                console.log("Fetched user data:", data);
+                setUser(data);
+                setLoading(false);
+            })
+            .catch((err) => {
+                localStorage.removeItem("accessToken")
+                console.error("Failed to fetch user:", err);
+                setLoading(false);
+            });
     }, []);
 
     const navigate = useNavigate();
