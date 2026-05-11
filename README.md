@@ -17,6 +17,10 @@ docker-compose --version
 The project uses a `.env` file to manage environment variables. Create a file named `.env` in the root directory (same folder as `docker-compose.yml`). For reference, check `.env.example` file containing all used variables.
 
 ### 3. Run the App
+To ensure you have latest database structure, run
+```bash
+docker compose down -v
+```
 To build the images and start all services, simply run:
 ```bash
 docker compose up --build

@@ -14,6 +14,34 @@ from app.schemas import (
 
 router = APIRouter(prefix="/api/dashboard/open-spaces", tags=["dashboard-open-spaces"])
 
+@router.get("", response_model=list[DashboardOpenSpaceResponse])
+def get_open_spaces(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["SUPER_ADMIN", "MANAGER"]))
+):
+    if current_user.role.name == "SUPER_ADMIN":
+        open_spaces = db.query(OpenSpace).all()
+    else:
+        open_spaces = (
+            db.query(OpenSpace)
+            .join(OpenSpaceManager, OpenSpaceManager.open_space_id == OpenSpace.id)
+            .filter(
+                OpenSpaceManager.user_id == current_user.id,
+                OpenSpaceManager.is_active == True
+            )
+            .all()
+        )
+    
+    return [
+        {
+            "id": os.id,
+            "name": os.name,
+            "building": os.building,
+            "floor": os.floor
+        } for os in open_spaces
+    ]
+
+
 @router.post("", response_model=DashboardOpenSpaceResponse, status_code=201)
 def create_open_space(
     data: DashboardOpenSpaceCreate, 
@@ -42,6 +70,40 @@ def create_open_space(
         "building": new_open_space.building,
         "floor": new_open_space.floor
     }
+
+@router.get("/{open_space_id}/desks", response_model=list[DeskLayoutItem])
+def get_desks_layout(
+    open_space_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["SUPER_ADMIN", "MANAGER"]))
+):
+    open_space = db.query(OpenSpace).filter(OpenSpace.id == open_space_id).first()
+
+    if not open_space:
+        raise HTTPException(status_code=404, detail="Open space not found")
+    
+    if current_user.role.name == "MANAGER":
+        manager_assignment = db.query(OpenSpaceManager).filter(
+            OpenSpaceManager.open_space_id == open_space_id,
+            OpenSpaceManager.user_id == current_user.id,
+            OpenSpaceManager.is_active == True        
+        ).first()
+
+        if not manager_assignment:
+            raise HTTPException(status_code=403, detail="You can view desks only in your assigned open space")
+
+    desks = db.query(Desk).filter(Desk.open_space_id == open_space_id).all()
+
+    return [
+        {
+            "id": desk.id,
+            "x": desk.x,
+            "y": desk.y,
+            "width": desk.width,
+            "height": desk.height,
+            "data": desk.label
+        } for desk in desks
+    ]
 
 @router.post("/{open_space_id}/desks", response_model=MessageResponse)
 def save_desks_layout(
@@ -73,12 +135,14 @@ def save_desks_layout(
     db.query(Desk).filter(Desk.open_space_id == open_space_id).delete()
 
     for desk_data in desks:
+        print(desk_data)
         new_desk = Desk(
             open_space_id = open_space_id,
             x = desk_data.x,
             y = desk_data.y,
             width = desk_data.width,
-            height = desk_data.height
+            height = desk_data.height,
+            label = desk_data.data
         )
 
         db.add(new_desk)

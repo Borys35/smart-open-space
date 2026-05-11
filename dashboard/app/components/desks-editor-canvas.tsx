@@ -28,8 +28,11 @@ export function DesksEditorCanvas({ desks, setDesks, overlappingDesks }: DesksEd
     const containerRef = useRef<HTMLDivElement>(null);
 
     const addDesk = () => {
+        // Generate a non-integer float for internal UI routing of uncreated desks
+        // React component will see this as unique, but later maps to `null` due to our float check
+        const tempId = Math.random() + 0.5;
         const newDesk: Desk = {
-            id: Math.random() * 1000000,
+            id: tempId,
             x: 50,
             y: 50,
             width: 100,

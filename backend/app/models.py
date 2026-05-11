@@ -60,6 +60,7 @@ class Desk(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     open_space_id = Column(Integer, ForeignKey("open_spaces.id"), nullable=False)
+    label = Column(String(32), nullable=True)
     x = Column(Float, nullable=False)
     y = Column(Float, nullable=False)
     width = Column(Float, nullable=False)

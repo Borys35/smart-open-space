@@ -80,6 +80,7 @@ WHERE is_active = TRUE;
 CREATE TABLE desks (
     id SERIAL PRIMARY KEY,
     open_space_id int NOT NULL REFERENCES open_spaces(id),
+    label varchar(32),
     x float NOT NULL,
     y float NOT NULL,
     width float NOT NULL CHECK (width > 0),

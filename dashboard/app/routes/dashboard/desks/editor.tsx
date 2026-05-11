@@ -1,19 +1,44 @@
 "use client"
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams } from "react-router";
 import { toast } from "sonner";
 import { DesksEditorCanvas, type Desk } from "~/components/desks-editor-canvas";
 import { Button } from "~/components/ui/button";
+import { useOpenSpace } from "~/providers/OpenSpaceProvider";
 
 export const handle = {
     title: "Desks Editor",
 };
 
 export default function DesksEditor() {
-    const { id } = useParams();
     const [desks, setDesks] = useState<Desk[]>([]);
     const [isSaving, setIsSaving] = useState(false);
+    const { activeOpenSpace } = useOpenSpace();
+
+    useEffect(() => {
+        if (!activeOpenSpace?.id) return;
+
+        fetch(`/api/dashboard/open-spaces/${activeOpenSpace.id}/desks`, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("accessToken")}`
+            }
+        })
+            .then(res => res.json())
+            .then((data: any[]) => {
+                if (Array.isArray(data)) {
+                    setDesks(data.map(d => ({
+                        id: d.id, // Keep the original backend integer ID
+                        x: d.x,
+                        y: d.y,
+                        width: d.width,
+                        height: d.height,
+                        data: d.data
+                    })));
+                }
+            })
+            .catch(console.error);
+    }, [activeOpenSpace?.id]);
 
     const overlappingDesks = useMemo(() => {
         const overlaps = new Set<number>();
@@ -40,7 +65,7 @@ export default function DesksEditor() {
             toast.error("Please resolve overlapping desks before saving.");
             return;
         }
-        if (!id) {
+        if (!activeOpenSpace?.id) {
             toast.error("Open space ID is missing.");
             return;
         }
@@ -48,11 +73,20 @@ export default function DesksEditor() {
         setIsSaving(true);
 
         try {
-            const response = await fetch(`/api/dashboard/open-spaces/${id}/desks`, {
+            const layoutData = desks.map(d => ({
+                id: Number.isInteger(d.id) ? d.id : null, // If it's the decimal temporary ID, send null
+                x: d.x,
+                y: d.y,
+                width: d.width,
+                height: d.height,
+                data: d.data
+            }));
+
+            const response = await fetch(`/api/dashboard/open-spaces/${activeOpenSpace?.id}/desks`, {
                 method: "POST",
                 credentials: "include",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(desks),
+                headers: { "Content-Type": "application/json", "Authorization": "Bearer " + localStorage.getItem("accessToken") },
+                body: JSON.stringify(layoutData),
             });
 
             if (!response.ok) {
