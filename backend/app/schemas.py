@@ -124,6 +124,7 @@ class DashboardOpenSpaceResponse(BaseModel):
 
 class DeskLayoutItem(BaseModel):
     id: int | None = None
+    data: str | None = None
     x: float
     y: float
     width: float
