@@ -19,6 +19,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
+import { useOpenSpace } from "~/providers/OpenSpaceProvider"
 
 const openSpaceSchema = z.object({
     name: z.string().min(1, "Name is required"),
@@ -34,7 +35,7 @@ export function CreateOpenSpaceForm({
 }: React.ComponentProps<"div">) {
     const [serverError, setServerError] = useState<string | null>(null)
     const navigate = useNavigate()
-
+    const { reloadOpenSpaces } = useOpenSpace()
     const {
         register,
         handleSubmit,
@@ -44,6 +45,7 @@ export function CreateOpenSpaceForm({
         defaultValues: {
             name: "",
             building: "",
+            floor: 0,
         },
     })
 
@@ -53,7 +55,7 @@ export function CreateOpenSpaceForm({
             const response = await fetch("/api/dashboard/open-spaces", {
                 method: "POST",
                 credentials: "include",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", "Authorization": "Bearer " + localStorage.getItem("accessToken") },
                 body: JSON.stringify(data),
             })
 
@@ -63,7 +65,7 @@ export function CreateOpenSpaceForm({
                 throw new Error(result.detail || "Something went wrong")
             }
 
-            console.log("Open space created:", result)
+            reloadOpenSpaces() // Reload the list of open spaces
             navigate("/") // Redirect back to dashboard or appropriate route
         } catch (error: any) {
             setServerError(error.message)

@@ -14,6 +14,34 @@ from app.schemas import (
 
 router = APIRouter(prefix="/api/dashboard/open-spaces", tags=["dashboard-open-spaces"])
 
+@router.get("", response_model=list[DashboardOpenSpaceResponse])
+def get_open_spaces(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["SUPER_ADMIN", "MANAGER"]))
+):
+    if current_user.role.name == "SUPER_ADMIN":
+        open_spaces = db.query(OpenSpace).all()
+    else:
+        open_spaces = (
+            db.query(OpenSpace)
+            .join(OpenSpaceManager, OpenSpaceManager.open_space_id == OpenSpace.id)
+            .filter(
+                OpenSpaceManager.user_id == current_user.id,
+                OpenSpaceManager.is_active == True
+            )
+            .all()
+        )
+    
+    return [
+        {
+            "id": os.id,
+            "name": os.name,
+            "building": os.building,
+            "floor": os.floor
+        } for os in open_spaces
+    ]
+
+
 @router.post("", response_model=DashboardOpenSpaceResponse, status_code=201)
 def create_open_space(
     data: DashboardOpenSpaceCreate, 

@@ -9,7 +9,6 @@ export interface UserType {
 
 interface AuthContextType {
     loading: boolean;
-    accessToken?: string;
     user: UserType | null;
     login: (accessToken: string, user: UserType) => Promise<void>;
     logout: () => void;
@@ -17,7 +16,6 @@ interface AuthContextType {
 
 const defaultValue: AuthContextType = {
     loading: true,
-    accessToken: undefined,
     user: null,
     login: async () => { },
     logout: () => { }
@@ -28,7 +26,6 @@ export const useAuth = () => useContext(AuthContext);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState(defaultValue.user);
-    const [accessToken, setAccessToken] = useState<string | undefined>(defaultValue.accessToken);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -72,8 +69,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             navigate("/login", { replace: true });
         };
 
-        return { user, accessToken, login, logout, loading };
-    }, [user, accessToken, navigate, setUser, loading]);
+        return { user, login, logout, loading };
+    }, [user, navigate, setUser, loading]);
 
     return (
         <AuthContext value={value}>

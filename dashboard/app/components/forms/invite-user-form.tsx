@@ -19,6 +19,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
+import { useOpenSpace } from "~/providers/OpenSpaceProvider"
 
 const inviteUserSchema = z.object({
     email: z.string().email("Please enter a valid email address"),
@@ -26,17 +27,15 @@ const inviteUserSchema = z.object({
 
 type InviteUserFormValues = z.infer<typeof inviteUserSchema>
 
-interface InviteUserFormProps extends React.ComponentProps<"div"> {
-    openSpaceId: string;
-}
+interface InviteUserFormProps extends React.ComponentProps<"div"> { }
 
 export function InviteUserForm({
     className,
-    openSpaceId,
     ...props
 }: InviteUserFormProps) {
     const [serverError, setServerError] = useState<string | null>(null)
     const navigate = useNavigate()
+    const { activeOpenSpace } = useOpenSpace()
 
     const {
         register,
@@ -52,10 +51,10 @@ export function InviteUserForm({
     const onSubmit = async (data: InviteUserFormValues) => {
         setServerError(null)
         try {
-            const response = await fetch(`/api/dashboard/open-spaces/${openSpaceId}/invite`, {
+            const response = await fetch(`/api/dashboard/open-spaces/${activeOpenSpace?.id}/invite`, {
                 method: "POST",
                 credentials: "include",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", "Authorization": "Bearer " + localStorage.getItem("accessToken") },
                 body: JSON.stringify(data),
             })
 

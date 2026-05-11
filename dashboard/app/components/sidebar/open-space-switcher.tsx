@@ -19,24 +19,14 @@ import {
 } from "~/components/ui/sidebar"
 import { ChevronLeft, ChevronRight, ChevronsUpDownIcon, GroupIcon, Plus, PlusIcon } from "lucide-react"
 import { useAuth } from "~/providers/AuthProvider"
+import { useOpenSpace } from "~/providers/OpenSpaceProvider"
 import { OpenSpaceDialog } from "./open-space-dialog"
 import { Link } from "react-router"
 
-export function OpenSpaceSwitcher({
-  teams,
-}: {
-  teams: {
-    name: string
-    plan: string
-  }[]
-}) {
+export function OpenSpaceSwitcher() {
   const { isMobile } = useSidebar()
-  const [activeTeam, setActiveTeam] = React.useState(teams[0])
   const { user } = useAuth();
-
-  if (!activeTeam) {
-    return null
-  }
+  const { openSpaces, activeOpenSpace, setActiveOpenSpace } = useOpenSpace();
 
   return (
     <SidebarMenu>
@@ -51,8 +41,8 @@ export function OpenSpaceSwitcher({
                 <GroupIcon />
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{activeTeam.name}</span>
-                <span className="truncate text-xs">{activeTeam.plan}</span>
+                <span className="truncate font-medium">{activeOpenSpace?.name}</span>
+                <span className="truncate text-xs">{activeOpenSpace?.building} - {activeOpenSpace?.floor}</span>
               </div>
               <ChevronsUpDownIcon className="ml-auto" />
             </SidebarMenuButton>
@@ -66,19 +56,17 @@ export function OpenSpaceSwitcher({
             <DropdownMenuLabel className="text-xs text-muted-foreground">
               Open Spaces
             </DropdownMenuLabel>
-            {teams.map((team, index) => (
-              <Link to={"/"} key={index}>
-                <DropdownMenuItem
-                  key={team.name}
-                  onClick={() => setActiveTeam(team)}
-                  className="gap-2 p-2"
-                >
-                  <div className="">
-                    <ChevronRight />
-                  </div>
-                  {team.name}
-                </DropdownMenuItem>
-              </Link>
+            {openSpaces.map((os) => (
+              <DropdownMenuItem
+                key={os.id}
+                onClick={() => setActiveOpenSpace(os)}
+                className="gap-2 p-2 cursor-pointer"
+              >
+                <div className="">
+                  <ChevronRight />
+                </div>
+                {os.name}
+              </DropdownMenuItem>
             ))}
             {user?.role === "SUPER_ADMIN" && (
               <>
