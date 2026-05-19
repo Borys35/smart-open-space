@@ -19,7 +19,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.ziuty.smart_open_space"
+      "package": "com.ziuty.smart_open_space",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static",
@@ -41,13 +42,24 @@
       ],
       [
         "expo-build-properties",
-        { "android": { "usePrecompiledHeaders": true } }
+        {
+          "android": {
+            "usePrecompiledHeaders": true
+          }
+        }
       ],
       "@rnrepo/expo-config-plugin"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "87ac23d1-b57c-436b-bac0-9614a15557c4"
+      }
+    },
+    "owner": "sobek"
   }
 }
