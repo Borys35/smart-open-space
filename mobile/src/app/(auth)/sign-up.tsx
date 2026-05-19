@@ -1,3 +1,5 @@
+import { useAuth } from "@/hooks/use-auth";
+import { Link } from "expo-router";
 import { useState } from "react";
 import {
   View,
@@ -8,8 +10,6 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Link } from "expo-router";
-import { useAuth } from "@/hooks/use-auth";
 
 export default function SignUp() {
   const [name, setName] = useState("");

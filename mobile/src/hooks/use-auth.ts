@@ -1,5 +1,5 @@
-import { useAuthStore, type User } from "@/stores/auth";
 import { api } from "@/lib/api";
+import { useAuthStore, type User } from "@/stores/auth";
 
 export function useAuth() {
   const token = useAuthStore((s) => s.token);
@@ -8,7 +8,10 @@ export function useAuth() {
   const logout = useAuthStore((s) => s.logout);
 
   const login = async (email: string, password: string) => {
-    const data = await api.post<{ access_token: string; user: User }>("/login", { email, password });
+    const data = await api.post<{ access_token: string; user: User }>("/login", {
+      email,
+      password,
+    });
     setAuth(data.access_token, data.user);
   };
 

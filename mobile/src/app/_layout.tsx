@@ -1,8 +1,7 @@
 import "@/setup/notifications";
-
+import { NotificationsHandler } from "@/components/notifications";
 import { useAuth } from "@/hooks/use-auth";
 import { Stack } from "expo-router";
-import { NotificationsHandler } from "@/components/notifications";
 
 export default function RootLayout() {
   return (
