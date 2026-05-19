@@ -1,6 +1,5 @@
-import { useAuthStore } from "@/stores/auth";
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL;
+import { useAuthStore, type User } from "@/stores/auth";
+import { api } from "@/lib/api";
 
 export function useAuth() {
   const token = useAuthStore((s) => s.token);
@@ -9,38 +8,14 @@ export function useAuth() {
   const logout = useAuthStore((s) => s.logout);
 
   const login = async (email: string, password: string) => {
-    const res = await fetch(`${API_URL}/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-
-    if (!res.ok) {
-      console.warn(`[auth] login failed: ${res.status} ${res.statusText}`);
-      const err = await res.json();
-      throw new Error(err.detail ?? "Login failed");
-    }
-
-    const data = await res.json();
+    const data = await api.post<{ access_token: string; user: User }>("/login", { email, password });
     setAuth(data.access_token, data.user);
   };
 
   const register = async (username: string, email: string, password: string) => {
-    const res = await fetch(`${API_URL}/register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, email, password }),
-    });
-
-    if (!res.ok) {
-      console.warn(`[auth] register failed: ${res.status} ${res.statusText}`);
-      const err = await res.json();
-      throw new Error(err.detail ?? "Registration failed");
-    }
-
+    await api.post("/register", { username, email, password });
     await login(email, password);
   };
 
-  const isAuthenticated = !!token;
-  return { token, user, isAuthenticated, login, logout, register };
+  return { token, user, isAuthenticated: !!token, login, logout, register };
 }

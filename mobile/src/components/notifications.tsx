@@ -6,8 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useEffect } from "react";
 import uuid from "react-native-uuid";
 import { Platform } from "react-native";
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL;
+import { api } from "@/lib/api";
 
 export function NotificationsHandler() {
   const { user, token } = useAuth();
@@ -54,18 +53,7 @@ export function NotificationsHandler() {
         }
 
         const pushToken = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-        const result = await fetch(`${API_URL}/api/tokens/register`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ device_id: deviceId, token: pushToken }),
-        });
-        if (!result.ok) {
-          console.warn(`[push] failed to register: ${result.status} ${result.statusText}`);
-          return;
-        }
+        await api.post("/api/tokens/register", { device_id: deviceId, token: pushToken });
         console.log("[push] registered");
       } catch (err) {
         console.warn(`[push] failed to register: ${err}`);

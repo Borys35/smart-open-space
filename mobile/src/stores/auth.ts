@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 import { zustandStorage } from "@/lib/storage";
 
-interface User {
+export interface User {
   id: number;
   name: string;
   email: string;
