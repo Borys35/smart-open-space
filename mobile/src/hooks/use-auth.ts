@@ -1,6 +1,6 @@
 import { useAuthStore } from "@/stores/auth";
 
-const API_URL = "http://10.0.2.2:8000";
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 export function useAuth() {
   const token = useAuthStore((s) => s.token);
