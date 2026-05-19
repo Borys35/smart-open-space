@@ -97,3 +97,22 @@ class Invitation(Base):
     open_space = relationship("OpenSpace", back_populates="invitations")
     invited_user = relationship("User", foreign_keys=[invited_user_id])
     invited_by_user = relationship("User", foreign_keys=[invited_by]) 
+
+class Membership(Base):
+    __tablename__ = "memberships"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    open_space_id = Column(Integer, ForeignKey("open_spaces.id"), nullable=False)
+    credits_balance = Column(Integer, default=0, nullable=False)
+    status = Column(
+        SQLEnum("ACTIVE", "BLOCKED", "LEFT", name="membership_status", create_type=False),
+        default="ACTIVE",
+        nullable=False
+    )
+    joined_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default= datetime.utcnow)
+
+    user = relationship("User", foreign_keys=[user_id])
+    open_space = relationship("OpenSpace")

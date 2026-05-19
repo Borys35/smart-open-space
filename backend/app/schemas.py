@@ -143,3 +143,14 @@ class InviteUserRequest(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
+
+class InviteResponse(BaseModel):
+    id: int 
+    user_id: int | None = None
+    space_id: int
+    invited_email: str
+    status: str
+
+class CreateInviteRequest(BaseModel):
+    user_id: int 
+    space_id: int
