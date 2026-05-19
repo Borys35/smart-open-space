@@ -1,6 +1,8 @@
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/hooks/use-auth";
+import * as Notifications from "expo-notifications";
+import { useEffect } from "react";
 
 export default function Home() {
   const { user, logout } = useAuth();
@@ -8,6 +10,20 @@ export default function Home() {
   const handleLogout = () => {
     logout();
   };
+
+  useEffect(() => {
+    const requestNotificationPerms = async () => {
+      const settings = await Notifications.getPermissionsAsync();
+      const granted =
+        settings.granted ||
+        settings.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL;
+      if (!granted) {
+        await Notifications.requestPermissionsAsync();
+      }
+    };
+
+    requestNotificationPerms();
+  }, []);
 
   if (!user) {
     return;

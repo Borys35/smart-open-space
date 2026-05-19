@@ -48,6 +48,7 @@
           }
         }
       ],
+      "expo-notifications",
       "@rnrepo/expo-config-plugin"
     ],
     "experiments": {
