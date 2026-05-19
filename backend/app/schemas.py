@@ -154,3 +154,43 @@ class InviteResponse(BaseModel):
 class CreateInviteRequest(BaseModel):
     user_id: int 
     space_id: int
+
+class RegisterPushTokenRequest(BaseModel):
+    token: str
+    device_id: str
+
+    @field_validator("token")
+    @classmethod
+    def validate_token(cls, value) -> str:
+        value = value.strip()
+
+        if len(value) < 1:
+            raise ValueError("Token must not be empty")
+
+        if len(value) >= 64:
+            raise ValueError("Token must be less than 64 characters")
+
+        if not value.startswith("ExponentPushToken["):
+            raise ValueError("Token must start with 'ExponentPushToken['")
+
+        bracket_content = value.removeprefix("ExponentPushToken[")
+
+        if not bracket_content.endswith("]"):
+            raise ValueError("Token must end with ']'")
+
+        if len(bracket_content) < 2:
+            raise ValueError("Token must contain push token ID inside brackets")
+
+        return value
+
+    @field_validator("device_id")
+    @classmethod
+    def validate_device_id(cls, value) -> str:
+        value = value.strip()
+
+        stripped = value.replace("-", "")
+
+        if len(stripped) != 32:
+            raise ValueError("Device ID must be a UUID containing exactly 32 hex characters")
+
+        return stripped
