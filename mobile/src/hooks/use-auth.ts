@@ -16,6 +16,7 @@ export function useAuth() {
     });
 
     if (!res.ok) {
+      console.warn(`[auth] login failed: ${res.status} ${res.statusText}`);
       const err = await res.json();
       throw new Error(err.detail ?? "Login failed");
     }
@@ -24,14 +25,15 @@ export function useAuth() {
     setAuth(data.access_token, data.user);
   };
 
-  const register = async (name: string, email: string, password: string) => {
+  const register = async (username: string, email: string, password: string) => {
     const res = await fetch(`${API_URL}/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify({ username, email, password }),
     });
 
     if (!res.ok) {
+      console.warn(`[auth] register failed: ${res.status} ${res.statusText}`);
       const err = await res.json();
       throw new Error(err.detail ?? "Registration failed");
     }
