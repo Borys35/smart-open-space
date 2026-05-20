@@ -1,9 +1,11 @@
+import threading
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from app.dependencies import get_db, require_roles
-from app.models import User, OpenSpace, Desk, OpenSpaceManager, Invitation
+from app.models import User, OpenSpace, Desk, OpenSpaceManager, Invitation, PushToken
 from app.schemas import (
     DashboardOpenSpaceCreate, 
     DashboardOpenSpaceResponse,
@@ -11,6 +13,7 @@ from app.schemas import (
     MessageResponse,
     InviteUserRequest
 )
+from app.services.push_service import send_push_notification
 
 router = APIRouter(prefix="/api/dashboard/open-spaces", tags=["dashboard-open-spaces"])
 
@@ -200,6 +203,23 @@ def invite_user_to_open_space(
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=400, detail="Inviation for this email already exsts")
+    
+    if invited_user:
+        push_tokens = db.query(PushToken).filter(
+            PushToken.user_id == invited_user.id
+        ).all()
+
+        if push_tokens:
+            def notify():
+                for pt in push_tokens:
+                    send_push_notification(
+                        push_token=pt.token,
+                        title="Invitation",
+                        body=f"You've been invited to {open_space.name}!",
+                        data={"invite_id": new_invitation.id},
+                    )
+
+            threading.Thread(target=notify, daemon=True).start()
     
     return {
         "message": "Invitation sent successfully"

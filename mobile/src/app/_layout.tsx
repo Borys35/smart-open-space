@@ -1,7 +1,18 @@
+import "@/setup/notifications";
+import { NotificationsHandler } from "@/components/notifications";
 import { useAuth } from "@/hooks/use-auth";
 import { Stack } from "expo-router";
 
 export default function RootLayout() {
+  return (
+    <>
+      <NotificationsHandler />
+      <ScreenStack />
+    </>
+  );
+}
+
+function ScreenStack() {
   const { isAuthenticated } = useAuth();
 
   return (

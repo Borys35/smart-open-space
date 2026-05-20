@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Float, Enum as SQLEnum, text
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Float, BigInteger, UniqueConstraint, Enum as SQLEnum, text
 from sqlalchemy.orm import relationship
 from app.database import Base
 from datetime import datetime
@@ -116,3 +116,17 @@ class Membership(Base):
 
     user = relationship("User", foreign_keys=[user_id])
     open_space = relationship("OpenSpace")
+
+class PushToken(Base):
+    __tablename__ = "push_tokens"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    token = Column(String(64), nullable=False)
+    device_id = Column(String(32), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "device_id", name="uq_push_tokens_user_device"),
+    )

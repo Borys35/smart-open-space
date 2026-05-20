@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 -- ENUMS
 -- status biurka
 CREATE TYPE desk_status AS ENUM ('AVAILABLE', 'MAINTENANCE', 'INACTIVE');
@@ -5,16 +7,16 @@ CREATE TYPE desk_status AS ENUM ('AVAILABLE', 'MAINTENANCE', 'INACTIVE');
 -- role użytkowników
 CREATE TYPE role_enum AS ENUM ('SUPER_ADMIN', 'MANAGER', 'USER');
 
--- status rezerwacji 
+-- status rezerwacji
 CREATE TYPE reservation_status AS ENUM ('PENDING', 'CONFIRMED', 'CANCELLED', 'DONE');
 
 -- status zaproszenia
 CREATE TYPE invitation_status AS ENUM ('PENDING', 'ACCEPTED', 'REJECTED', 'EXPIRED');
 
--- status członkostwa 
+-- status członkostwa
 CREATE TYPE membership_status AS ENUM ('ACTIVE', 'BLOCKED', 'LEFT');
 
--- typy transakcji 
+-- typy transakcji
 CREATE TYPE credit_transaction_type AS ENUM ('TOP_UP', 'RESERVATION_CHARGE', 'REFUND', 'MANUAL_ADJUSTMENT');
 
 -- rodzaj identyfikatora dostępu
@@ -25,6 +27,14 @@ CREATE TYPE access_action AS ENUM ('CHECK_IN', 'CHECK_OUT', 'ENTRY', 'IDENTITY_V
 
 -- dostępne wyniki przy czytniku
 CREATE TYPE access_result AS ENUM ('SUCCESS', 'DENIED');
+
+CREATE OR REPLACE FUNCTION set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
 -- TABLES
 -- role
@@ -76,7 +86,7 @@ CREATE UNIQUE INDEX unique_active_manager_per_open_space
 ON open_space_managers(open_space_id)
 WHERE is_active = TRUE;
 
--- biurka 
+-- biurka
 CREATE TABLE desks (
     id SERIAL PRIMARY KEY,
     open_space_id int NOT NULL REFERENCES open_spaces(id),
@@ -90,7 +100,7 @@ CREATE TABLE desks (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- zaproszenia 
+-- zaproszenia
 CREATE TABLE invitations (
     id SERIAL PRIMARY KEY,
     open_space_id int NOT NULL REFERENCES open_spaces(id),
@@ -107,7 +117,7 @@ CREATE TABLE invitations (
 
 CREATE UNIQUE INDEX unique_pending_invitation_per_email
 ON invitations(open_space_id, invited_email)
-WHERE status = 'PENDING'; 
+WHERE status = 'PENDING';
 
 -- członkostwo
 CREATE TABLE memberships (
@@ -131,10 +141,10 @@ CREATE TABLE credit_transactions (
     type credit_transaction_type NOT NULL,
     description varchar(255),
     created_by int REFERENCES users(id),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP 
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- rezerwacje 
+-- rezerwacje
 CREATE TABLE reservations (
     id SERIAL PRIMARY KEY,
     desk_id int NOT NULL REFERENCES desks(id),
@@ -164,7 +174,7 @@ CREATE TABLE access_credentials (
     deactivated_at TIMESTAMP
 );
 
--- logi użycia identyfikatorów 
+-- logi użycia identyfikatorów
 CREATE TABLE access_logs (
     id SERIAL PRIMARY KEY,
     access_credential_id int NOT NULL REFERENCES access_credentials(id),
@@ -175,3 +185,23 @@ CREATE TABLE access_logs (
     action access_action NOT NULL,
     result access_result NOT NULL
 );
+
+CREATE TABLE push_tokens (
+    id BIGINT GENERATED ALWAYS AS IDENTITY,
+    user_id INT NOT NULL REFERENCES users(id),
+    token TEXT NOT NULL,
+    device_id TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+
+    CHECK (LENGTH(token) > 0 AND LENGTH(token) < 64),
+    CHECK (LENGTH(device_id) = 32),
+    UNIQUE (user_id, device_id)
+);
+
+CREATE OR REPLACE TRIGGER tg_set_updated_at_push_tokens
+    BEFORE INSERT OR UPDATE ON push_tokens
+    FOR EACH ROW
+    EXECUTE FUNCTION set_updated_at();
+
+CREATE INDEX idx_push_token_id ON push_tokens(user_id);

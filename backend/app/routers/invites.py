@@ -1,3 +1,4 @@
+import threading
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -6,8 +7,9 @@ from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 
 from app.dependencies import get_db, get_current_user, require_roles
-from app.models import User, Invitation, Membership, OpenSpace, OpenSpaceManager
+from app.models import User, Invitation, Membership, OpenSpace, OpenSpaceManager, PushToken
 from app.schemas import InviteResponse, CreateInviteRequest
+from app.services.push_service import send_push_notification
 
 router = APIRouter(prefix="/api/invites", tags=["invites"])
 
@@ -169,5 +171,21 @@ def create_invite(
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=400, detail="Invitation for this user already exists")
-    
+
+    push_tokens = db.query(PushToken).filter(
+        PushToken.user_id == invited_user.id
+    ).all()
+
+    if push_tokens:
+        def notify():
+            for pt in push_tokens:
+                send_push_notification(
+                    push_token=pt.token,
+                    title="Invitation",
+                    body=f"You've been invited to {open_space.name}!",
+                    data={"invite_id": new_invitation.id},
+                )
+
+        threading.Thread(target=notify, daemon=True).start()
+
     return

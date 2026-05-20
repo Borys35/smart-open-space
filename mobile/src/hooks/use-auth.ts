@@ -1,6 +1,5 @@
-import { useAuthStore } from "@/stores/auth";
-
-const API_URL = "http://10.0.2.2:8000";
+import { api } from "@/lib/api";
+import { useAuthStore, type User } from "@/stores/auth";
 
 export function useAuth() {
   const token = useAuthStore((s) => s.token);
@@ -9,36 +8,17 @@ export function useAuth() {
   const logout = useAuthStore((s) => s.logout);
 
   const login = async (email: string, password: string) => {
-    const res = await fetch(`${API_URL}/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+    const data = await api.post<{ access_token: string; user: User }>("/login", {
+      email,
+      password,
     });
-
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail ?? "Login failed");
-    }
-
-    const data = await res.json();
     setAuth(data.access_token, data.user);
   };
 
-  const register = async (name: string, email: string, password: string) => {
-    const res = await fetch(`${API_URL}/register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password }),
-    });
-
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail ?? "Registration failed");
-    }
-
+  const register = async (username: string, email: string, password: string) => {
+    await api.post("/register", { username, email, password });
     await login(email, password);
   };
 
-  const isAuthenticated = !!token;
-  return { token, user, isAuthenticated, login, logout, register };
+  return { token, user, isAuthenticated: !!token, login, logout, register };
 }
