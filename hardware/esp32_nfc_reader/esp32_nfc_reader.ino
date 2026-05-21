@@ -51,7 +51,7 @@ void setup(void)
 
   // konfiguracja aktualizacji kodu bezprzewodowo (Over-The-Air)
   ArduinoOTA.setHostname("Czytnik-NFC-ESP32");
-  ArduinoOTA.setPassword("haslo123");
+  ArduinoOTA.setPassword("YOUR_OTA_PASSWORD");
   ArduinoOTA.begin();
 
   // start nfc
