@@ -153,7 +153,7 @@ CREATE TABLE reservations (
     start_time TIMESTAMP NOT NULL,
     end_time TIMESTAMP NOT NULL,
     credit_cost int NOT NULL,
-    status reservation_status NOT NULL DEFAULT 'PENDING',
+    status reservation_status NOT NULL DEFAULT 'CONFIRMED',
     checked_in_at TIMESTAMP,
     checked_out_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -162,6 +162,15 @@ CREATE TABLE reservations (
     CHECK (end_time > start_time),
     CHECK (credit_cost >= 0)
 );
+
+CREATE INDEX idx_reservation_desk_time
+ON reservations(desk_id, start_time, end_time);
+
+CREATE INDEX idx_reservation_user
+ON reservations(user_id);
+
+CREATE INDEX idx_reservations_membership
+ON resevations(membership_id);
 
 -- identyfikator dostępu użytkowników
 CREATE TABLE access_credentials (

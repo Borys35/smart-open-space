@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr, field_validator 
 from enum import Enum
+from datetime import datetime 
 
 # Role użytkowników w systemie
 class RoleEnum(str, Enum):
@@ -152,7 +153,7 @@ class InviteResponse(BaseModel):
     status: str
 
 class CreateInviteRequest(BaseModel):
-    user_id: int 
+    email: EmailStr 
     space_id: int
 
 class RegisterPushTokenRequest(BaseModel):
@@ -194,3 +195,18 @@ class RegisterPushTokenRequest(BaseModel):
             raise ValueError("Device ID must be a UUID containing exactly 32 hex characters")
 
         return stripped
+
+class ReservationCreate(BaseModel):
+    desk_id: int
+    start_time: datetime
+    end_time: datetime
+
+class ReservationResponse(BaseModel):
+    id: int
+    desk_id: int
+    start_time: datetime
+    end_time: datetime
+    credit_cost: int
+    status: str
+
+

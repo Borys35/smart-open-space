@@ -130,3 +130,44 @@ class PushToken(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "device_id", name="uq_push_tokens_user_device"),
     )
+
+class Reservation(Base):
+    __tablename__ = "reservations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    desk_id = Column(Integer, ForeignKey("desks.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    membership_id = Column(Integer, ForeignKey("memberships.id"), nullable=False)
+    start_time = Column(DateTime, nullable=False)
+    end_time = Column(DateTime, nullable=False)
+    credit_cost = Column(Integer, nullable=False)
+    status = Column(
+        SQLEnum("PENDING", "CONFIRMED", "CANCELLED", "DONE", name="reservation_status", create_type=False),
+        default="CONFIRMED",
+        nullable=False
+    )
+    checked_in_at = Column(DateTime, nullable=True)
+    checked_out_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    desk = relationship("Desk", foreign_keys=[desk_id])
+    user = relationship("User", foreign_keys=[user_id])
+    membership = relationship("Membership", foreign_keys=[membership_id])
+
+class CreditTransaction(Base):
+    __tablename__ = "credit_transactions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    membership_id = Column(Integer, ForeignKey("memberships.id"), nullable=False)
+    amount = Column(Integer, nullable=False)
+    type = Column(
+        SQLEnum("TOP_UP", "RESERVATION_CHARGE", "REFUND", "MANUAL_ADJUSTMENT", name="credit_transaction_type", create_type=False),
+        nullable=False
+    )
+    description = Column(String(255), nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    membership = relationship("Membership", foreign_keys=[membership_id])
+    created_by_user = relationship("User", foreign_keys=[created_by])
