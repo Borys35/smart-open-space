@@ -108,7 +108,7 @@ def accept_invite(
         new_membership = Membership(
             user_id=current_user.id,
             open_space_id=invite.open_space_id,
-            credits_balance=0,
+            credits_balance=100,
             status="ACTIVE"
         )
 
@@ -130,12 +130,6 @@ def create_invite(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(["SUPER_ADMIN", "MANAGER"]))
 ):
-    
-    invited_user = db.query(User).filter(User.id == data.user_id).first()
-
-    if not invited_user:
-        raise HTTPException(status_code=404, detail="Invited user not found")
-    
     open_space = db.query(OpenSpace).filter(OpenSpace.id == data.space_id).first()
 
     if not open_space:
@@ -143,9 +137,6 @@ def create_invite(
     
     if not open_space.is_active:
         raise HTTPException(status_code=400, detail="Open space is inactive")
-    
-    if invited_user.id == current_user.id:
-        raise HTTPException(status_code=400, detail="You cannot invite yourself")
     
     if current_user.role.name == "MANAGER":
         manager_assignment = db.query(OpenSpaceManager).filter(
@@ -155,12 +146,22 @@ def create_invite(
         ).first()
 
         if not manager_assignment:
-            raise HTTPException(status_code=403, detail="You can invite users only to your assigned open space")
+            raise HTTPException(
+                status_code=403,
+                detail="You can invite users only to your assigned open space"
+            )
         
+    invited_email = str(data.email).lower().strip()
+    
+    invited_user = db.query(User).filter(User.email == invited_email).first()
+
+    if invited_user and invited_user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="You cannot invite yourself")
+    
     new_invitation = Invitation(
         open_space_id=data.space_id,
-        invited_email=invited_user.email.lower().strip(),
-        invited_user_id=invited_user.id,
+        invited_email=invited_email,
+        invited_user_id=invited_user.id if invited_user else None,
         invited_by=current_user.id
     )
 
@@ -168,24 +169,29 @@ def create_invite(
 
     try:
         db.commit()
+        db.refresh(new_invitation)
     except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=400, detail="Invitation for this user already exists")
+        raise HTTPException(
+            status_code=400,
+            detail="Invitation for this email already exists"
+        )
+    
+    if invited_user:
+        push_tokens = db.query(PushToken).filter(
+            PushToken.user_id == invited_user.id
+        ).all()
 
-    push_tokens = db.query(PushToken).filter(
-        PushToken.user_id == invited_user.id
-    ).all()
+        if push_tokens:
+            def notify():
+                for pt in push_tokens:
+                    send_push_notification(
+                        push_token=pt.token,
+                        title="Invitation",
+                        body=f"You've been invited to {open_space.name}!",
+                        data={"invite_id": new_invitation.id},
+                    )
 
-    if push_tokens:
-        def notify():
-            for pt in push_tokens:
-                send_push_notification(
-                    push_token=pt.token,
-                    title="Invitation",
-                    body=f"You've been invited to {open_space.name}!",
-                    data={"invite_id": new_invitation.id},
-                )
-
-        threading.Thread(target=notify, daemon=True).start()
+            threading.Thread(target=notify, daemon=True).start()
 
     return

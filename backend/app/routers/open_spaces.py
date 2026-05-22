@@ -1,19 +1,15 @@
-import threading
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from app.dependencies import get_db, require_roles
-from app.models import User, OpenSpace, Desk, OpenSpaceManager, Invitation, PushToken
+from app.models import User, OpenSpace, Desk, OpenSpaceManager
 from app.schemas import (
     DashboardOpenSpaceCreate, 
     DashboardOpenSpaceResponse,
     DeskLayoutItem,
     MessageResponse,
-    InviteUserRequest
 )
-from app.services.push_service import send_push_notification
 
 router = APIRouter(prefix="/api/dashboard/open-spaces", tags=["dashboard-open-spaces"])
 
@@ -154,73 +150,4 @@ def save_desks_layout(
 
     return {
         "message": "Configuration saved successfully!"
-    }
-
-@router.post("/{open_space_id}/invite", response_model=MessageResponse)
-def invite_user_to_open_space(
-    open_space_id: int,
-    data: InviteUserRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["SUPER_ADMIN", "MANAGER"]))
-):
-    
-    open_space = db.query(OpenSpace).filter(OpenSpace.id == open_space_id).first()
-
-    if not open_space:
-        raise HTTPException(status_code=404, detail="Open space not found")
-    
-    if not open_space.is_active:
-        raise HTTPException(status_code=400, detail="Open space is inactive")
-    
-    if current_user.role.name == "MANAGER":
-        manager_assignment = db.query(OpenSpaceManager).filter(
-            OpenSpaceManager.open_space_id == open_space_id,
-            OpenSpaceManager.user_id == current_user.id,
-            OpenSpaceManager.is_active == True
-        ).first()
-
-        if not manager_assignment:
-            raise HTTPException(status_code=403, detail="You can invite users only to your assigned open space")
-        
-    invited_email = str(data.email).lower().strip()
-    
-    invited_user = db.query(User).filter(User.email == invited_email).first()
-
-    if invited_user and invited_user.id == current_user.id:
-        raise HTTPException(status_code=400, detail="You cannot invite yourself")
-    
-    new_invitation = Invitation(
-        open_space_id = open_space_id,
-        invited_email = invited_email,
-        invited_user_id = invited_user.id if invited_user else None,
-        invited_by = current_user.id
-    )
-
-    db.add(new_invitation)
-
-    try:
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(status_code=400, detail="Inviation for this email already exsts")
-    
-    if invited_user:
-        push_tokens = db.query(PushToken).filter(
-            PushToken.user_id == invited_user.id
-        ).all()
-
-        if push_tokens:
-            def notify():
-                for pt in push_tokens:
-                    send_push_notification(
-                        push_token=pt.token,
-                        title="Invitation",
-                        body=f"You've been invited to {open_space.name}!",
-                        data={"invite_id": new_invitation.id},
-                    )
-
-            threading.Thread(target=notify, daemon=True).start()
-    
-    return {
-        "message": "Invitation sent successfully"
     }

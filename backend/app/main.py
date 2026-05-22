@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 from app.database import SessionLocal, engine, Base
 from app.models import User, Role
-from app.routers import auth, users, open_spaces, invites, push_tokens
+from app.routers import auth, users, open_spaces, invites, push_tokens, reservations
 
 app = FastAPI()
 
@@ -11,6 +11,7 @@ app.include_router(users.router)
 app.include_router(open_spaces.router)
 app.include_router(invites.router)
 app.include_router(push_tokens.router)
+app.include_router(reservations.router)
 
 @app.on_event("startup")
 def on_startup():
