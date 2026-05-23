@@ -9,6 +9,7 @@ from app.schemas import (
     DashboardOpenSpaceResponse,
     DeskLayoutItem,
     MessageResponse,
+    OpenSpaceSettingsUpdate
 )
 
 router = APIRouter(prefix="/api/dashboard/open-spaces", tags=["dashboard-open-spaces"])
@@ -134,8 +135,8 @@ def save_desks_layout(
     db.query(Desk).filter(Desk.open_space_id == open_space_id).delete()
 
     for desk_data in desks:
-        print(desk_data)
         new_desk = Desk(
+            #print(desk_data)
             open_space_id = open_space_id,
             x = desk_data.x,
             y = desk_data.y,
@@ -151,3 +152,35 @@ def save_desks_layout(
     return {
         "message": "Configuration saved successfully!"
     }
+
+@router.patch("/{open_space_id}/settings", response_model=MessageResponse)
+def update_open_space_settings(
+    open_space_id: int,
+    data: OpenSpaceSettingsUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["SUPER_ADMIN", "MANAGER"]))
+):
+    
+    open_space = db.query(OpenSpace).filter(OpenSpace.id == open_space_id).first()
+
+    if not open_space:
+        raise HTTPException(status_code=404, detail="Open space not found")
+    
+    if current_user.role.name == "MANAGER":
+        manager_assignment = db.query(OpenSpaceManager).filter(
+            OpenSpaceManager.open_space_id == open_space_id,
+            OpenSpaceManager.user_id == current_user.id,
+            OpenSpaceManager.is_active == True
+        ).first()
+
+        if not manager_assignment:
+            raise HTTPException(status_code=403, detail="You can update settings only in your assigned open space")
+        
+    open_space.credits_per_hour = data.credits_per_hour
+    open_space.max_daily_hours = data.max_daily_hours
+    open_space.period_credits = data.period_credits
+    open_space.credit_reset_period = data.credit_reset_period
+    
+    db.commit()
+    
+    return {"message": "Open space settings updated successfully"}

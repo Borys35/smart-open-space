@@ -209,4 +209,44 @@ class ReservationResponse(BaseModel):
     credit_cost: int
     status: str
 
+class OpenSpaceSettingsUpdate(BaseModel):
+    credits_per_hour: int
+    max_daily_hours: int
+    period_credits: int
+    credit_reset_period: str
 
+    @field_validator("credits_per_hour", "max_daily_hours")
+    @classmethod
+    def validate_positive(cls, value) -> int:
+        if value <= 0:
+            raise ValueError("Value must be greater than 0")
+        
+        return value
+    
+
+    @field_validator("period_credits")
+    @classmethod
+    def validate_period_credits(cls, value) -> int:
+        if value < 0:
+            raise ValueError("Period credits cannot be negative")
+        
+        return value
+    
+    @field_validator("credit_reset_period")
+    @classmethod
+    def validate_credit_reset_period(cls, value) -> str:
+        value = value.strip().upper()
+
+        if value not in ["WEEKLY", "MONTHLY"]:
+            raise ValueError("Credit reset period must be WEEKLY or MONTHLY")
+        
+        return value
+
+class DeskAvailabilityResponse(BaseModel):
+    id: int
+    data: str | None = None
+    x: float
+    y: float
+    width: float
+    height: float
+    available: bool
