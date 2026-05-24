@@ -49,6 +49,10 @@
         }
       ],
       "expo-notifications",
+      "expo-web-browser",
+      "expo-font",
+      "expo-image",
+      "expo-status-bar",
       "@rnrepo/expo-config-plugin"
     ],
     "experiments": {
