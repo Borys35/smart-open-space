@@ -5,7 +5,7 @@ import { immer } from "zustand/middleware/immer";
 
 export interface User {
   id: number;
-  name: string;
+  username: string;
   email: string;
   role: string;
 }
