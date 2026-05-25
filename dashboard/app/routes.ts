@@ -17,6 +17,9 @@ export default [
                 route("invite", "routes/dashboard/users/invite.tsx"),
                 route("pending", "routes/dashboard/users/pending-invitations.tsx"),
             ]),
+            ...prefix("settings", [
+                index("routes/dashboard/open-spaces/settings.tsx"),
+            ])
         ])
     ]),
 ] satisfies RouteConfig
