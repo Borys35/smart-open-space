@@ -6,6 +6,8 @@ export default defineConfig({
   plugins: ["react"],
   rules: {
     "react/exhaustive-deps": "error",
+    "typescript/consistent-type-imports": "error",
+    "typescript/no-import-type-side-effects": "error",
     curly: ["warn", "multi-line"],
   },
 });

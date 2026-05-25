@@ -41,6 +41,17 @@
         }
       ],
       [
+        "expo-font",
+        {
+          "fonts": [
+            "node_modules/@expo-google-fonts/sn-pro/300Light/SNPro_300Light.ttf",
+            "node_modules/@expo-google-fonts/sn-pro/400Regular/SNPro_400Regular.ttf",
+            "node_modules/@expo-google-fonts/sn-pro/500Medium/SNPro_500Medium.ttf",
+            "node_modules/@expo-google-fonts/sn-pro/700Bold/SNPro_700Bold.ttf"
+          ]
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "android": {
@@ -50,7 +61,6 @@
       ],
       "expo-notifications",
       "expo-web-browser",
-      "expo-font",
       "expo-image",
       "expo-status-bar",
       "@rnrepo/expo-config-plugin"

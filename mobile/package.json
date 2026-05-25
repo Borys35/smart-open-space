@@ -15,12 +15,14 @@
     "fmt:check": "oxfmt --check"
   },
   "dependencies": {
+    "@expo-google-fonts/sn-pro": "^0.4.0",
     "@expo/vector-icons": "^15.0.3",
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-navigation/elements": "^2.6.3",
     "@react-navigation/native": "^7.1.8",
     "@react-navigation/native-stack": "^7.15.1",
     "@rnrepo/expo-config-plugin": "0.3.0-beta.2",
+    "@ssobkowski/rnui": "github:ssobkowski/rnsbk#main&path:/packages/rnui",
     "@tanstack/react-query": "^5.100.14",
     "@types/react-native": "^0.73.0",
     "expo": "~56.0.4",
@@ -46,6 +48,7 @@
     "react-native-ease": "^0.7.2",
     "react-native-gesture-handler": "~2.31.2",
     "react-native-mmkv": "^4.3.1",
+    "react-native-nitro-modules": "^0.35.7",
     "react-native-reanimated": "~4.3.1",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.25.2",
@@ -56,6 +59,7 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@babel/core": "^7.29.0",
     "@types/react": "~19.2.15",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~56.0.4",
