@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/table"
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
+import { Link } from 'react-router';
 
 export interface Invitation {
   id: number;
@@ -29,6 +30,16 @@ interface InvitationsListProps {
 }
 
 export default function InvitationsList({ invitations }: InvitationsListProps) {
+  if (invitations.length === 0) {
+    return (
+      <div className="text-center">
+        <p className="text-sm text-muted-foreground">No pending invitations.</p>
+        <Button variant="outline" size="sm" className="mt-4">
+          <Link to="/users/invite">Invite a User</Link>
+        </Button>
+      </div>
+    )
+  }
   return (
     <Table>
       <TableCaption>Pending Invitations</TableCaption>
