@@ -15,6 +15,7 @@ export default [
             ]),
             ...prefix("users", [
                 route("invite", "routes/dashboard/users/invite.tsx"),
+                route("pending", "routes/dashboard/users/pending-invitations.tsx"),
             ]),
         ])
     ]),

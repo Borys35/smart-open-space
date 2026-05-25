@@ -18,6 +18,7 @@ def get_my_invites(
     db: Session = Depends(get_db), 
     current_user: User = Depends(get_current_user)
     ):
+    """Get pending invitations for the current user"""
 
     user_email = current_user.email.lower().strip()
 
