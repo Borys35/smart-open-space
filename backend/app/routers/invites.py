@@ -202,7 +202,7 @@ def create_invite(
 
     return
 
-@router.delete("/{invite_id}", status_code=204, response_model=MessageResponse)
+@router.delete("/{invite_id}", status_code=204)
 def delete_invite(
     invite_id: int,
     db: Session = Depends(get_db),
@@ -228,6 +228,3 @@ def delete_invite(
     
     db.delete(invite)
     db.commit()
-
-    return { "message": "Invitation deleted" }
-    

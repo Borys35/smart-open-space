@@ -33,6 +33,24 @@ export default function UsersPendingInvitations() {
             .finally(() => setIsLoading(false))
     }, [activeOpenSpace?.id])
 
+    const handleCancelInvite = async (inviteId: number) => {
+        try {
+            const response = await fetch(`/api/invites/${inviteId}`, {
+                method: "DELETE",
+                credentials: "include",
+                headers: { "Authorization": "Bearer " + localStorage.getItem("accessToken") },
+            })
+
+            if (!response.ok) {
+                const result = await response.json()
+                throw new Error(result.detail || "Failed to cancel invitation")
+            }
+
+            setPendingInvitations(prev => prev.filter(invite => invite.id !== inviteId))
+        } catch (err: any) {
+            setError(err.message)
+        }
+    }
 
     return (
         <div className="flex flex-col h-full w-full p-4 md:p-6 lg:p-8">
@@ -43,7 +61,13 @@ export default function UsersPendingInvitations() {
                         {error}
                     </p>
                 )}
-                <InvitationsList invitations={pendingInvitations} />
+                {isLoading ? (
+                    <p className="text-sm text-center font-medium text-muted-foreground">
+                        Loading pending invitations...
+                    </p>
+                ) : (
+                    <InvitationsList invitations={pendingInvitations} onCancel={handleCancelInvite} />
+                )}
             </div>
         </div>
     )

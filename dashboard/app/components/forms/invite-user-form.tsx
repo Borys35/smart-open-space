@@ -41,6 +41,7 @@ export function InviteUserForm({
         register,
         handleSubmit,
         formState: { errors, isSubmitting },
+        reset,
     } = useForm<InviteUserFormValues>({
         resolver: zodResolver(inviteUserSchema),
         defaultValues: {
@@ -69,6 +70,7 @@ export function InviteUserForm({
             }
 
             console.log("User invited:", result)
+            reset()
             // navigate("/")
         } catch (error: any) {
             setServerError(error.message)

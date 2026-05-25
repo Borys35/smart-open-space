@@ -26,10 +26,11 @@ export interface Invitation {
 }
 
 interface InvitationsListProps {
-  invitations: Invitation[]
+  invitations: Invitation[];
+  onCancel?: (inviteId: number) => void;
 }
 
-export default function InvitationsList({ invitations }: InvitationsListProps) {
+export default function InvitationsList({ invitations, onCancel }: InvitationsListProps) {
   if (invitations.length === 0) {
     return (
       <div className="text-center">
@@ -40,6 +41,7 @@ export default function InvitationsList({ invitations }: InvitationsListProps) {
       </div>
     )
   }
+
   return (
     <Table>
       <TableCaption>Pending Invitations</TableCaption>
@@ -64,7 +66,7 @@ export default function InvitationsList({ invitations }: InvitationsListProps) {
             </TableCell>
             <TableCell>{new Date(invite.created_at).toLocaleDateString()}</TableCell>
             <TableCell>
-              <Button variant="destructive" size="sm">
+              <Button variant="destructive" size="sm" onClick={() => onCancel && onCancel(invite.id)}>
                 Cancel
               </Button>
             </TableCell>
