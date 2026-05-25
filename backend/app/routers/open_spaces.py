@@ -3,11 +3,13 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from app.dependencies import get_db, require_roles
-from app.models import User, OpenSpace, Desk, OpenSpaceManager
+from app.models import Invitation, User, OpenSpace, Desk, OpenSpaceManager
 from app.schemas import (
+    DashboardInviteResponse,
     DashboardOpenSpaceCreate, 
     DashboardOpenSpaceResponse,
     DeskLayoutItem,
+    InviteResponse,
     MessageResponse,
     OpenSpaceSettingsUpdate
 )
@@ -184,3 +186,46 @@ def update_open_space_settings(
     db.commit()
     
     return {"message": "Open space settings updated successfully"}
+
+@router.get("/{open_space_id}/invites", response_model=list[DashboardInviteResponse])
+def get_open_space_invites(
+    open_space_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["SUPER_ADMIN", "MANAGER"])),
+    pending_only: bool = False
+):
+    open_space = db.query(OpenSpace).filter(OpenSpace.id == open_space_id).first()
+
+    if not open_space:
+        raise HTTPException(status_code=404, detail="Open space not found")
+    
+    if current_user.role.name == "MANAGER":
+        manager_assignment = db.query(OpenSpaceManager).filter(
+            OpenSpaceManager.open_space_id == open_space_id,
+            OpenSpaceManager.user_id == current_user.id,
+            OpenSpaceManager.is_active == True
+        ).first()
+
+        if not manager_assignment:
+            raise HTTPException(status_code=403, detail="You can view invites only in your assigned open space")
+    
+    if pending_only:
+        invites = db.query(Invitation).filter(
+            Invitation.open_space_id == open_space_id,
+            Invitation.status == "PENDING"
+        ).all()
+    else:
+        invites = db.query(Invitation).filter(Invitation.open_space_id == open_space_id).all()
+
+    return [
+        {
+            "id": invite.id,
+            "email": invite.invited_email,
+            "status": invite.status,
+            "invited_user": {
+                "id": invite.invited_user.id,
+                "username": invite.invited_user.username,
+            } if invite.invited_user else None,
+            "created_at": invite.created_at
+        } for invite in invites
+    ]

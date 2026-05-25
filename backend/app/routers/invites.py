@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.dependencies import get_db, get_current_user, require_roles
 from app.models import User, Invitation, Membership, OpenSpace, OpenSpaceManager, PushToken
-from app.schemas import InviteResponse, CreateInviteRequest
+from app.schemas import InviteResponse, CreateInviteRequest, MessageResponse
 from app.services.push_service import send_push_notification
 
 router = APIRouter(prefix="/api/invites", tags=["invites"])
@@ -18,6 +18,7 @@ def get_my_invites(
     db: Session = Depends(get_db), 
     current_user: User = Depends(get_current_user)
     ):
+    """Get pending invitations for the current user"""
 
     user_email = current_user.email.lower().strip()
 
@@ -200,3 +201,30 @@ def create_invite(
             threading.Thread(target=notify, daemon=True).start()
 
     return
+
+@router.delete("/{invite_id}", status_code=204)
+def delete_invite(
+    invite_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["SUPER_ADMIN", "MANAGER"]))
+):
+    invite = db.query(Invitation).filter(Invitation.id == invite_id).first()
+
+    if not invite:
+        raise HTTPException(status_code=404, detail="Invitation not found")
+    
+    if current_user.role.name == "MANAGER":
+        manager_assignment = db.query(OpenSpaceManager).filter(
+            OpenSpaceManager.open_space_id == invite.open_space_id,
+            OpenSpaceManager.user_id == current_user.id,
+            OpenSpaceManager.is_active == True
+        ).first()
+
+        if not manager_assignment:
+            raise HTTPException(
+                status_code=403,
+                detail="You can delete invitations only for your assigned open space"
+            )
+    
+    db.delete(invite)
+    db.commit()

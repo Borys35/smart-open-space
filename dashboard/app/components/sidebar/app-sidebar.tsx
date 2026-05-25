@@ -76,6 +76,10 @@ const data = {
           title: "Invite user",
           url: "/users/invite",
         },
+        {
+          title: "Pending Invitations",
+          url: "/users/pending",
+        },
       ],
     },
     {

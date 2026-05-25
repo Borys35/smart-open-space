@@ -39,6 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 if (!res.ok) {
                     throw new Error("Failed to fetch user");
                 }
+                console.log("User data response status:", res.status);
                 return res.json()
             })
             .then((data) => {

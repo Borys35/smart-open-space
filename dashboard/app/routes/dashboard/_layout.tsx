@@ -54,9 +54,9 @@ export default function DashboardLayout() {
                                                     match.handle && match.handle.title,
                                             )
                                             .map((match: any, index) => (
-                                                <li key={index}>
+                                                <span key={index}>
                                                     {match.handle.title}
-                                                </li>
+                                                </span>
                                             ))}</BreadcrumbPage>
                                 </BreadcrumbItem>
                             </BreadcrumbList>

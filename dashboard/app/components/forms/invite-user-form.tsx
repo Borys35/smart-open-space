@@ -41,6 +41,7 @@ export function InviteUserForm({
         register,
         handleSubmit,
         formState: { errors, isSubmitting },
+        reset,
     } = useForm<InviteUserFormValues>({
         resolver: zodResolver(inviteUserSchema),
         defaultValues: {
@@ -51,11 +52,15 @@ export function InviteUserForm({
     const onSubmit = async (data: InviteUserFormValues) => {
         setServerError(null)
         try {
-            const response = await fetch(`/api/dashboard/open-spaces/${activeOpenSpace?.id}/invite`, {
+            const openSpaceId = activeOpenSpace?.id
+            if (!openSpaceId) {
+                throw new Error("No active open space selected")
+            }
+            const response = await fetch(`/api/invites`, {
                 method: "POST",
                 credentials: "include",
                 headers: { "Content-Type": "application/json", "Authorization": "Bearer " + localStorage.getItem("accessToken") },
-                body: JSON.stringify(data),
+                body: JSON.stringify({ ...data, space_id: openSpaceId }),
             })
 
             const result = await response.json()
@@ -65,7 +70,8 @@ export function InviteUserForm({
             }
 
             console.log("User invited:", result)
-            navigate("/") // Redirect back to dashboard or appropriate route
+            reset()
+            // navigate("/")
         } catch (error: any) {
             setServerError(error.message)
         }

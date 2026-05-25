@@ -152,6 +152,13 @@ class InviteResponse(BaseModel):
     invited_email: str
     status: str
 
+class DashboardInviteResponse(BaseModel):
+    id: int 
+    email: str
+    status: str
+    invited_user: UserResponse | None = None
+    created_at: datetime
+
 class CreateInviteRequest(BaseModel):
     email: EmailStr 
     space_id: int
