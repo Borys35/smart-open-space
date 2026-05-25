@@ -28,6 +28,8 @@ CREATE TYPE access_action AS ENUM ('CHECK_IN', 'CHECK_OUT', 'ENTRY', 'IDENTITY_V
 -- dostępne wyniki przy czytniku
 CREATE TYPE access_result AS ENUM ('SUCCESS', 'DENIED');
 
+CREATE TYPE credit_reset_period_enum AS ENUM ('WEEKLY', 'MONTHLY');
+
 CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -61,8 +63,11 @@ CREATE TABLE open_spaces (
     name varchar(100) NOT NULL,
     floor int NOT NULL,
     building varchar(50) NOT NULL,
-    credits_per_hour int NOT NULL DEFAULT 1 CHECK (credits_per_hour > 0),
+    credits_per_hour int NOT NULL DEFAULT 2 CHECK (credits_per_hour > 0),
     max_daily_hours int NOT NULL DEFAULT 8 CHECK (max_daily_hours > 0),
+    period_credits int NOT NULL DEFAULT 80 CHECK (period_credits >= 0),
+    credit_reset_period credit_reset_period_enum NOT NULL DEFAULT 'WEEKLY',
+    last_credit_reset_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
@@ -170,7 +175,7 @@ CREATE INDEX idx_reservation_user
 ON reservations(user_id);
 
 CREATE INDEX idx_reservations_membership
-ON resevations(membership_id);
+ON reservations(membership_id);
 
 -- identyfikator dostępu użytkowników
 CREATE TABLE access_credentials (

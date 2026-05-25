@@ -1,13 +1,12 @@
-from datetime import datetime
 from math import ceil
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session 
-from sqlalchemy import or_
 
 from app.dependencies import get_db, get_current_user
 from app.models import User, Desk, OpenSpace, Membership, Reservation, CreditTransaction
-from app.schemas import ReservationCreate, ReservationResponse
+from app.schemas import ReservationCreate, ReservationResponse, DeskAvailabilityResponse
 
 router = APIRouter(prefix="/api/reservations", tags=["reservations"])
 
@@ -158,3 +157,65 @@ def cancel_reservation(
     db.commit()
 
     return
+
+@router.get("/availability", response_model=list[DeskAvailabilityResponse])
+def get_desk_availability(
+    open_space_id: int,
+    start_time: datetime,
+    end_time: datetime,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    
+    if end_time <= start_time:
+        raise HTTPException(status_code=400, detail="End time must be after start time")
+    
+    open_space = db.query(OpenSpace).filter(OpenSpace.id == open_space_id).first()
+
+    if not open_space:
+        raise HTTPException(status_code=404, detail="Open space not found")
+    
+    membership = db.query(Membership).filter(
+        Membership.user_id == current_user.id,
+        Membership.open_space_id == open_space_id,
+        Membership.status == "ACTIVE"
+    ).first()
+
+    if not membership:
+        raise HTTPException(status_code=403, detail="You are not a member of this open space")
+    
+    desks = db.query(Desk).filter(
+        Desk.open_space_id == open_space_id
+    ).all()
+
+    desk_ids = []
+
+    for desk in desks:
+        desk_ids.append(desk.id)
+
+    conflicting_reservations = db.query(Reservation).filter(
+        Reservation.desk_id.in_(desk_ids),
+        Reservation.status != "CANCELLED",
+        start_time < Reservation.end_time,
+        end_time > Reservation.start_time
+    ).all()
+
+    reserved_desk_ids = set()
+
+    for reservation in conflicting_reservations:
+        reserved_desk_ids.add(reservation.desk_id)
+
+    
+    return [
+        {
+            "id": desk.id,
+            "data": desk.label,
+            "x": desk.x,
+            "y": desk.y,
+            "width": desk.width,
+            "height": desk.height,
+            "available": desk.status == "AVAILABLE" and desk.id not in reserved_desk_ids
+        }
+
+        for desk in desks
+    ]

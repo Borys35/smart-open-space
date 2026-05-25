@@ -99,6 +99,11 @@ def accept_invite(
     if invite.status != "PENDING":
         raise HTTPException(status_code=400, detail="Invitation is not pending")
     
+    open_space = db.query(OpenSpace).filter(OpenSpace.id == invite.open_space_id).first()
+
+    if not open_space:
+        raise HTTPException(status_code=404, detail="Open space not found")
+    
     existing_membership = db.query(Membership).filter(
         Membership.user_id == current_user.id,
         Membership.open_space_id == invite.open_space_id
@@ -108,7 +113,7 @@ def accept_invite(
         new_membership = Membership(
             user_id=current_user.id,
             open_space_id=invite.open_space_id,
-            credits_balance=100,
+            credits_balance=open_space.period_credits,
             status="ACTIVE"
         )
 

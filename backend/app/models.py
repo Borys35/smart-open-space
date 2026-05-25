@@ -32,6 +32,13 @@ class OpenSpace(Base):
     building = Column(String(50), nullable=True)
     credits_per_hour = Column(Integer, default=1, nullable=False)
     max_daily_hours = Column(Integer, default=8, nullable=False)
+    period_credits = Column(Integer, default=80, nullable=False)
+    credit_reset_period = Column(
+        SQLEnum("WEEKLY", "MONTHLY", name="credit_reset_period_enum", create_type=False),
+        default="WEEKLY",
+        nullable=False
+    )
+    last_credit_reset_at = Column(DateTime, default=datetime.utcnow)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
     is_active = Column(Boolean, default=True, nullable=False)
