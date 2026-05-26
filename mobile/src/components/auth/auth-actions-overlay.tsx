@@ -19,7 +19,7 @@ import type { OverlayProps } from "@ssobkowski/stack";
 import type { KeyboardAvoidingViewProps } from "react-native";
 
 interface AuthOverlayMeta {
-  actions?: "welcome" | "sign-in" | "hidden";
+  actions?: "welcome" | "sign-in" | "sign-up" | "hidden";
 }
 
 const KEYBOARD_BEHAVIOR = Platform.select({
@@ -30,11 +30,12 @@ const KEYBOARD_BEHAVIOR = Platform.select({
 const ACTION_LABELS = {
   welcome: { key: "welcome", label: "Get Started" },
   "sign-in": { key: "sign-in", label: "Continue" },
+  "sign-up": { key: "sign-up", label: "Create account" },
 } as const;
 
 const ACTIONS_LAYOUT_TRANSITION = LinearTransition.springify().damping(120).stiffness(900);
-const ACTION_LABEL_ENTERING = FadeIn.duration(150);
-const ACTION_LABEL_EXITING = FadeOut.duration(120);
+const ACTION_LABEL_ENTERING = FadeIn.duration(180);
+const ACTION_LABEL_EXITING = FadeOut.duration(140);
 const VALIDATION_HINT_ENTERING = FadeIn.duration(150);
 const VALIDATION_HINT_EXITING = FadeOut.duration(120);
 const LOGIN_PROMPT_ENTERING = FadeIn.duration(180);
@@ -45,7 +46,15 @@ const WELCOME_ACTIONS_ENTERING = FadeInDown.duration(300)
 
 export function AuthActionsOverlay({ meta }: OverlayProps) {
   const insets = useSafeAreaInsets();
-  const { signInLoading, signInValidation, submitSignIn, welcomeReady } = useAuthActions();
+  const {
+    signInLoading,
+    signInValidation,
+    signUpLoading,
+    signUpValidation,
+    submitSignIn,
+    submitSignUp,
+    welcomeReady,
+  } = useAuthActions();
   const actions = (meta as AuthOverlayMeta | undefined)?.actions ?? "hidden";
   const { height } = useReanimatedKeyboardAnimation();
 
@@ -59,7 +68,15 @@ export function AuthActionsOverlay({ meta }: OverlayProps) {
 
   const { key, label } = ACTION_LABELS[actions];
   const isOnboarding = key === "welcome";
-  const signInDisabled = !isOnboarding && (!signInValidation.valid || signInLoading);
+  const loading = key === "sign-up" ? signUpLoading : signInLoading;
+  const validation = key === "sign-up" ? signUpValidation : signInValidation;
+  const disabled = !isOnboarding && (!validation.valid || loading);
+  const handlePress =
+    key === "welcome"
+      ? () => router.push("/sign-up")
+      : key === "sign-in"
+        ? submitSignIn
+        : submitSignUp;
 
   return (
     <KeyboardAvoidingView
@@ -74,31 +91,29 @@ export function AuthActionsOverlay({ meta }: OverlayProps) {
         style={[styles.bottomGradient, { paddingBottom: insets.bottom + 16 }]}
       >
         <Animated.View layout={ACTIONS_LAYOUT_TRANSITION} style={[buttonStyle, styles.action]}>
-          {!isOnboarding ? (
-            <Animated.View style={styles.validationHintSlot}>
-              {signInValidation.hint ? (
-                <Text
-                  willAnimate
-                  accessibilityLiveRegion="polite"
-                  color="#8E8E93"
-                  entering={VALIDATION_HINT_ENTERING}
-                  exiting={VALIDATION_HINT_EXITING}
-                  size="sm"
-                  style={styles.validationHint}
-                >
-                  {signInValidation.hint}
-                </Text>
-              ) : null}
-            </Animated.View>
-          ) : null}
+          {!isOnboarding && validation.hint && (
+            <Text
+              willAnimate
+              accessibilityLiveRegion="polite"
+              color="#8E8E93"
+              entering={VALIDATION_HINT_ENTERING}
+              exiting={VALIDATION_HINT_EXITING}
+              size="sm"
+              style={styles.validationHint}
+            >
+              {validation.hint}
+            </Text>
+          )}
+
           <Button
             variant="primary"
-            disabled={signInDisabled}
-            disabledStyle={!signInLoading ? styles.primaryButtonDisabled : undefined}
-            onPress={!isOnboarding ? submitSignIn : () => router.push("/sign-up")}
+            disabled={disabled}
+            disabledStyle={styles.primaryButtonDisabled}
+            layout={ACTIONS_LAYOUT_TRANSITION}
+            onPress={handlePress}
             style={styles.primaryButton}
           >
-            {!isOnboarding && signInLoading ? (
+            {!isOnboarding && loading ? (
               <ActivityIndicator color="#733e0a" />
             ) : (
               <Text
@@ -116,7 +131,7 @@ export function AuthActionsOverlay({ meta }: OverlayProps) {
           </Button>
         </Animated.View>
 
-        {isOnboarding ? (
+        {isOnboarding && (
           <Button
             onPress={() => router.push("/sign-in")}
             entering={LOGIN_PROMPT_ENTERING}
@@ -131,7 +146,7 @@ export function AuthActionsOverlay({ meta }: OverlayProps) {
               </Text>
             </Text>
           </Button>
-        ) : null}
+        )}
       </Animated.View>
     </KeyboardAvoidingView>
   );
@@ -165,9 +180,6 @@ const styles = StyleSheet.create((t) => ({
   },
   validationHint: {
     textAlign: "center",
-  },
-  validationHintSlot: {
-    minHeight: 18,
     justifyContent: "center",
   },
 }));

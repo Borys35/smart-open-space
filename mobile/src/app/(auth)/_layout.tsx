@@ -47,7 +47,7 @@ export default function AuthLayout() {
           name="sign-up"
           options={{
             gestureEnabled: false,
-            meta: { actions: "hidden" },
+            meta: { actions: "sign-up" },
             transitionSpec: {
               open: Transition.Specs.DefaultSpec,
               close: Transition.Specs.DefaultSpec,
