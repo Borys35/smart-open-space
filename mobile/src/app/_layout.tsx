@@ -1,11 +1,11 @@
 import "@/setup/notifications";
-import "@/setup/unistyles";
 import { NotificationsHandler } from "@/components/notifications";
 import { useAuth } from "@/hooks/use-auth";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 
 export default function RootLayout() {
   const [queryClient] = useState(() => new QueryClient());
@@ -14,7 +14,9 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView>
         <NotificationsHandler />
-        <ScreenStack />
+        <KeyboardProvider>
+          <ScreenStack />
+        </KeyboardProvider>
       </GestureHandlerRootView>
     </QueryClientProvider>
   );

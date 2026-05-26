@@ -1,3 +1,5 @@
+import { AuthActionsProvider } from "@/components/auth/auth-actions-context";
+import { AuthActionsOverlay } from "@/components/auth/auth-actions-overlay";
 import { BlankStack } from "@/components/layouts/stack";
 import Transition from "@ssobkowski/stack";
 import { interpolate } from "react-native-reanimated";
@@ -19,30 +21,41 @@ const screenStyleInterpolator: ScreenStyleInterpolator = ({ progress, current })
 
 export default function AuthLayout() {
   return (
-    <BlankStack screenOptions={{ gestureEnabled: false }}>
-      <BlankStack.Screen name="index" />
-      <BlankStack.Screen
-        name="sign-in"
-        options={{
-          gestureEnabled: false,
-          transitionSpec: {
-            open: Transition.Specs.DefaultSpec,
-            close: Transition.Specs.DefaultSpec,
-          },
-          screenStyleInterpolator,
-        }}
-      />
-      <BlankStack.Screen
-        name="sign-up"
-        options={{
-          gestureEnabled: false,
-          transitionSpec: {
-            open: Transition.Specs.DefaultSpec,
-            close: Transition.Specs.DefaultSpec,
-          },
-          screenStyleInterpolator,
-        }}
-      />
-    </BlankStack>
+    <AuthActionsProvider>
+      <BlankStack screenOptions={{ gestureEnabled: false }}>
+        <BlankStack.Screen
+          name="index"
+          options={{
+            overlay: AuthActionsOverlay,
+            overlayShown: true,
+            meta: { actions: "welcome" },
+          }}
+        />
+        <BlankStack.Screen
+          name="sign-in"
+          options={{
+            gestureEnabled: false,
+            meta: { actions: "sign-in" },
+            transitionSpec: {
+              open: Transition.Specs.DefaultSpec,
+              close: Transition.Specs.DefaultSpec,
+            },
+            screenStyleInterpolator,
+          }}
+        />
+        <BlankStack.Screen
+          name="sign-up"
+          options={{
+            gestureEnabled: false,
+            meta: { actions: "hidden" },
+            transitionSpec: {
+              open: Transition.Specs.DefaultSpec,
+              close: Transition.Specs.DefaultSpec,
+            },
+            screenStyleInterpolator,
+          }}
+        />
+      </BlankStack>
+    </AuthActionsProvider>
   );
 }

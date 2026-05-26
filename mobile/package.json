@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "main": "expo-router/entry",
+  "main": "src/index.ts",
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
@@ -12,7 +12,8 @@
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "fmt": "oxfmt",
-    "fmt:check": "oxfmt --check"
+    "fmt:check": "oxfmt --check",
+    "doctor": "react-doctor"
   },
   "dependencies": {
     "@expo-google-fonts/sn-pro": "^0.4.0",
@@ -48,6 +49,7 @@
     "react-native": "0.85.3",
     "react-native-ease": "^0.7.2",
     "react-native-gesture-handler": "~2.31.2",
+    "react-native-keyboard-controller": "1.21.6",
     "react-native-mmkv": "^4.3.1",
     "react-native-nitro-modules": "^0.35.7",
     "react-native-reanimated": "~4.3.1",
@@ -68,6 +70,7 @@
     "oxfmt": "^0.45.0",
     "oxlint": "^1.60.0",
     "oxlint-config-universe": "^0.0.3",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "react-doctor": "^0.2.6"
   }
 }
