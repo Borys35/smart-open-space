@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
 import { EaseView } from "react-native-ease";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { StyleSheet } from "react-native-unistyles";
 
 import type { LayoutChangeEvent } from "react-native";
@@ -16,7 +16,6 @@ export default function OnboardingScreen() {
 
   const [isLoaded, setIsLoaded] = useState(false);
   const [buttonsHeight, setButtonsHeight] = useState<number | undefined>(undefined);
-  const { bottom: bottomInset } = useSafeAreaInsets();
 
   const handleLoad = () => {
     setIsLoaded(true);
