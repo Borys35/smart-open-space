@@ -7,18 +7,28 @@ from sqlalchemy.orm import Session
 
 from app.database import SessionLocal, engine, Base
 from app.models import User, Role
-from app.routers import auth, users, open_spaces, invites, push_tokens, reservations
 from app.services.credit_reset_service import reset_expired_open_space_credits
+
+from app.routers import auth
+from app.routers.dashboard import open_spaces as dashboard_open_spaces
+from app.routers.dashboard import users as dashboard_users
+from app.routers.dashboard import invites as dashboard_invites
+from app.routers.dashboard import reservations as dashboard_reservations
+from app.routers.mobile import invites as mobile_invites
+from app.routers.mobile import reservations as mobile_reservations
+from app.routers.mobile import push_tokens as mobile_push_tokens
 
 app = FastAPI()
 logger = logging.getLogger(__name__)
 
 app.include_router(auth.router)
-app.include_router(users.router)
-app.include_router(open_spaces.router)
-app.include_router(invites.router)
-app.include_router(push_tokens.router)
-app.include_router(reservations.router)
+app.include_router(dashboard_open_spaces.router)
+app.include_router(dashboard_users.router)
+app.include_router(dashboard_invites.router)
+app.include_router(dashboard_reservations.router)
+app.include_router(mobile_invites.router)
+app.include_router(mobile_reservations.router)
+app.include_router(mobile_push_tokens.router)
 
 def credit_reset_loop():
     while True:

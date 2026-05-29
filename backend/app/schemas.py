@@ -257,3 +257,21 @@ class DeskAvailabilityResponse(BaseModel):
     width: float
     height: float
     available: bool
+
+class DashboardNextReservationResponse(BaseModel):
+    id: int
+    start_time: datetime
+    end_time: datetime 
+    user_id: int
+
+class DashboardDeskAvailabilityResponse(BaseModel):
+    id: int
+    data: str | None = None
+    x: float
+    y: float 
+    width: float 
+    height: float 
+    status: str
+    is_occupied: bool
+    next_reservation: DashboardNextReservationResponse | None = None
+    

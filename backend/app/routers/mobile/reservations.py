@@ -8,7 +8,7 @@ from app.dependencies import get_db, get_current_user
 from app.models import User, Desk, OpenSpace, Membership, Reservation, CreditTransaction
 from app.schemas import ReservationCreate, ReservationResponse, DeskAvailabilityResponse
 
-router = APIRouter(prefix="/api/reservations", tags=["reservations"])
+router = APIRouter(prefix="/api/reservations", tags=["mobile-reservations"])
 
 @router.post("", response_model=ReservationResponse, status_code=201)
 def create_reservation(
