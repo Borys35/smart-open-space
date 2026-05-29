@@ -274,4 +274,44 @@ class DashboardDeskAvailabilityResponse(BaseModel):
     status: str
     is_occupied: bool
     next_reservation: DashboardNextReservationResponse | None = None
-    
+
+class DashboardReservationResponse(BaseModel):
+    id: int 
+    desk_id: int
+    desk_label: str | None = None
+    user_id: int 
+    username: str
+    email: str
+    start_time: datetime
+    end_time: datetime
+    credit_cost: int
+    status: str
+
+class DashboardReservationsPageResponse(BaseModel):
+    items: list[DashboardReservationResponse]
+    total: int
+    page: int 
+    limit: int 
+
+class DashboardReservationDetailsResponse(BaseModel):
+    id: int 
+    desk_id: int 
+    desk_label: str | None = None
+    user_id: int 
+    username: str
+    email: str
+    start_time: datetime
+    end_time: datetime
+    credit_cost: int
+    status: str
+    checked_in_at: datetime | None = None
+    checked_out_at: datetime | None = None
+    created_at: datetime
+
+class DashboardOpenSpaceUserResponse(BaseModel):
+    id: int 
+    username: str
+    email: str
+    role: str
+    membership_status: str | None = None
+    credits_balance: int | None = None

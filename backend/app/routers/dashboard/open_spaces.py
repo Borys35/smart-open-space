@@ -1,9 +1,11 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from app.dependencies import get_db, require_roles
-from app.models import Invitation, User, OpenSpace, Desk, OpenSpaceManager
+from app.models import Invitation, User, OpenSpace, Desk, OpenSpaceManager, Reservation, Membership
 from app.schemas import (
     DashboardInviteResponse,
     DashboardOpenSpaceCreate, 
@@ -11,7 +13,9 @@ from app.schemas import (
     DeskLayoutItem,
     InviteResponse,
     MessageResponse,
-    OpenSpaceSettingsUpdate
+    OpenSpaceSettingsUpdate,
+    DashboardDeskAvailabilityResponse,
+    DashboardOpenSpaceUserResponse
 )
 
 router = APIRouter(prefix="/api/dashboard/open-spaces", tags=["dashboard-open-spaces"])
@@ -229,3 +233,175 @@ def get_open_space_invites(
             "created_at": invite.created_at
         } for invite in invites
     ]
+
+@router.get("/{open_space_id}/desks/availability", response_model=list[DashboardDeskAvailabilityResponse])
+def get_open_space_desk_availability(
+    open_space_id: int,
+    time: datetime | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["SUPER_ADMIN", "MANAGER"]))
+):
+    
+    if time is None:
+        time = datetime.utcnow()
+    
+    open_space = db.query(OpenSpace).filter(OpenSpace.id == open_space_id).first()
+    
+    if not open_space:
+        raise HTTPException(status_code=404, detail="Open space not found")
+    
+    if current_user.role.name == "MANAGER":
+        manager_assignment = db.query(OpenSpaceManager).filter(
+            OpenSpaceManager.open_space_id == open_space_id,
+            OpenSpaceManager.user_id == current_user.id,
+            OpenSpaceManager.is_active == True
+        ).first()
+
+        if not manager_assignment:
+            raise HTTPException(status_code=403, detail="You can view desk availability only in your assigned open space")
+    
+    desks = db.query(Desk).filter(Desk.open_space_id == open_space_id).all()
+    
+    result = []
+
+    for desk in desks:
+        current_reservation = db.query(Reservation).filter(
+            Reservation.desk_id == desk.id,
+            Reservation.status == "CONFIRMED",
+            Reservation.start_time <= time,
+            Reservation.end_time > time
+        ).first()
+
+        next_reservation = db.query(Reservation).filter(
+            Reservation.desk_id == desk.id,
+            Reservation.status == "CONFIRMED",
+            Reservation.start_time > time
+        ).order_by(Reservation.start_time.asc()).first()
+
+        result.append({
+            "id": desk.id,
+            "data": desk.label,
+            "x": desk.x,
+            "y": desk.y,
+            "width": desk.width,
+            "height": desk.height,
+            "status": desk.status,
+            "is_occupied": current_reservation is not None,
+            "next_reservation": {
+                "id": next_reservation.id,
+                "start_time": next_reservation.start_time,
+                "end_time": next_reservation.end_time,
+                "user_id": next_reservation.user_id
+            } if next_reservation else None
+        })
+
+    return result 
+
+@router.get("/{open_space_id}/users", response_model=list[DashboardOpenSpaceUserResponse])
+def get_open_space_users(
+    open_space_id: int,
+    role: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["SUPER_ADMIN", "MANAGER"]))
+):
+    
+    open_space = db.query(OpenSpace).filter(OpenSpace.id == open_space_id).first()
+
+    if not open_space:
+        raise HTTPException(status_code=404, detail="Open space not found")
+    
+    if current_user.role.name == "MANAGER":
+        manager_assignment = db.query(OpenSpaceManager).filter(
+            OpenSpaceManager.open_space_id == open_space_id,
+            OpenSpaceManager.user_id == current_user.id,
+            OpenSpaceManager.is_active == True
+        ).first()
+
+        if not manager_assignment:
+            raise HTTPException(status_code=403, detail="You can view users only in your assigned open space")
+
+    allowed_roles = ["USER", "MANAGER"]
+
+    if role is not None:
+        role = role.strip().upper()
+
+        if role not in allowed_roles:
+            raise HTTPException(status_code=400, detail="Role must be USER or MANAGER")
+    
+    result = []
+
+    if role is None or role == "USER":
+        memberships = db.query(Membership, User).join(
+            User, Membership.user_id == User.id
+        ).filter(
+            Membership.open_space_id == open_space_id
+        ).all()
+
+        for membership, user in memberships:
+            result.append({
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "role": "USER",
+                "membership_status": membership.status,
+                "credits_balance": membership.credits_balance
+            })
+
+    if role is None or role == "MANAGER":
+        manager_assignments = db.query(OpenSpaceManager, User).join(
+            User, OpenSpaceManager.user_id == User.id
+        ).filter(
+            OpenSpaceManager.open_space_id == open_space_id,
+            OpenSpaceManager.is_active == True
+        ).all()
+
+        for manager_assignment, user in manager_assignments:
+            result.append({
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "role": "MANAGER",
+                "membership_status": None,
+                "credits_balance": None
+            }) 
+
+    return result
+
+@router.post("/{open_space_id}/users/{user_id}/promote", response_model=MessageResponse)
+def promote_user(
+    open_space_id: int,
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["SUPER_ADMIN"]))
+):
+    
+    open_space = db.query(OpenSpace).filter(OpenSpace.id == open_space_id).first()
+
+    if not open_space:
+        raise HTTPException(status_code=404, detail="Open space not found")
+    
+    user = db.query(User).filter(User.id == user_id).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    existing_manager = db.query(OpenSpaceManager).filter(
+        OpenSpaceManager.open_space_id == open_space_id,
+        OpenSpaceManager.user_id == user_id,
+        OpenSpaceManager.is_active == True
+    ).first()
+
+    if existing_manager:
+        raise HTTPException(status_code=400, detail="User is already manager of this open space")
+    
+    new_manager = OpenSpaceManager(
+        open_space_id=open_space_id,
+        user_id=user_id,
+        assigned_by=current_user.id,
+        is_active=True
+    )
+
+    db.add(new_manager)
+    db.commit()
+
+    return {"message": "User promoted to open space manager successfully"}

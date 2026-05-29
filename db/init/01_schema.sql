@@ -88,7 +88,7 @@ CREATE TABLE open_space_managers (
 
 -- indeks do pilnowania zasady: open-space ma tylko jednego managera
 CREATE UNIQUE INDEX unique_active_manager_per_open_space
-ON open_space_managers(open_space_id)
+ON open_space_managers(open_space_id, user_id)
 WHERE is_active = TRUE;
 
 -- biurka
