@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, field_validator 
+from pydantic import BaseModel, EmailStr, field_validator, model_validator 
 from enum import Enum
 from datetime import datetime 
 
@@ -82,6 +82,13 @@ class DashboardOpenSpaceCreate(BaseModel):
     name: str
     building: str
     floor: int
+    address: str | None = None
+    place_name: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    image_url: str | None = None
+    opened_at: datetime | None = None
+    closed_at: datetime | None = None
 
     @field_validator("name")
     @classmethod
@@ -117,11 +124,53 @@ class DashboardOpenSpaceCreate(BaseModel):
         
         return value
     
+    @field_validator("latitude")
+    @classmethod
+    def validate_latitude(cls, value) -> float | None:
+        if value is None:
+            return value
+        
+        if value < -90 or value > 90:
+            raise ValueError("Latitude must be between -90 and 90")
+        
+        return value
+    
+    @field_validator("longitude")
+    @classmethod
+    def validate_longitude(cls, value) -> float | None:
+        if value is None:
+            return value 
+        
+        if value < -180 or value > 180:
+            raise ValueError("Longitude must be between -180 and 180")
+
+        return value
+    
+    @model_validator(mode="after")
+    def validate_open_space_data(self):
+        if (self.latitude is None) != (self.longitude is None):
+            raise ValueError("Latitude and longitude must be provided together")
+        
+        if self.opened_at is not None and self.closed_at is not None:    
+            if self.closed_at < self.opened_at:
+                raise ValueError("closed_at must be after opened_at")
+            
+        return self
+    
+   
+    
 class DashboardOpenSpaceResponse(BaseModel):
     id: int 
     name: str
     building: str
     floor: int
+    address: str | None = None
+    place_name: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    image_url: str | None = None
+    opened_at: datetime | None = None
+    closed_at: datetime | None = None
 
 class DeskLayoutItem(BaseModel):
     id: int | None = None
@@ -144,13 +193,6 @@ class InviteUserRequest(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
-
-class InviteResponse(BaseModel):
-    id: int 
-    user_id: int | None = None
-    space_id: int
-    invited_email: str
-    status: str
 
 class DashboardInviteResponse(BaseModel):
     id: int 
@@ -315,3 +357,24 @@ class DashboardOpenSpaceUserResponse(BaseModel):
     role: str
     membership_status: str | None = None
     credits_balance: int | None = None
+
+class MobileOpenSpaceSummary(BaseModel):
+    id: int
+    name: str
+    building: str | None = None
+    floor: int
+    address: str | None = None
+    place_name: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None 
+    image_url: str | None = None
+    opened_at: datetime | None = None
+    closed_at: datetime | None = None
+
+class InviteResponse(BaseModel):
+    id: int 
+    user_id: int | None = None
+    space_id: int
+    invited_email: str
+    status: str
+    open_space: MobileOpenSpaceSummary | None = None

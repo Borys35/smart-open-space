@@ -17,6 +17,7 @@ from app.routers.dashboard import reservations as dashboard_reservations
 from app.routers.mobile import invites as mobile_invites
 from app.routers.mobile import reservations as mobile_reservations
 from app.routers.mobile import push_tokens as mobile_push_tokens
+from app.routers.mobile import open_spaces as mobile_open_spaces
 
 app = FastAPI()
 logger = logging.getLogger(__name__)
@@ -29,6 +30,7 @@ app.include_router(dashboard_reservations.router)
 app.include_router(mobile_invites.router)
 app.include_router(mobile_reservations.router)
 app.include_router(mobile_push_tokens.router)
+app.include_router(mobile_open_spaces.router)
 
 def credit_reset_loop():
     while True:

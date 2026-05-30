@@ -19,7 +19,9 @@ def get_my_invites(
 
     user_email = current_user.email.lower().strip()
 
-    invites = db.query(Invitation).filter(
+    invites = db.query(Invitation, OpenSpace).join(
+        OpenSpace, Invitation.open_space_id == OpenSpace.id
+    ).filter(
         Invitation.status == "PENDING",
         or_(
             Invitation.invited_user_id == current_user.id,
@@ -29,13 +31,26 @@ def get_my_invites(
 
     result = []
 
-    for invite in invites:
+    for invite, open_space in invites:
         result.append({
             "id": invite.id,
             "user_id": invite.invited_user_id,
             "space_id": invite.open_space_id,
             "invited_email": invite.invited_email,
-            "status": invite.status
+            "status": invite.status,
+            "open_space": {
+                "id": open_space.id,
+                "name": open_space.name,
+                "building": open_space.building,
+                "floor": open_space.floor,
+                "address": open_space.address,
+                "place_name": open_space.place_name,
+                "latitude": open_space.latitude,
+                "longitude": open_space.longitude,
+                "image_url": open_space.image_url,
+                "opened_at": open_space.opened_at,
+                "closed_at": open_space.closed_at
+            }
         })
 
     return result

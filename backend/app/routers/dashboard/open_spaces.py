@@ -11,7 +11,6 @@ from app.schemas import (
     DashboardOpenSpaceCreate, 
     DashboardOpenSpaceResponse,
     DeskLayoutItem,
-    InviteResponse,
     MessageResponse,
     OpenSpaceSettingsUpdate,
     DashboardDeskAvailabilityResponse,
@@ -43,7 +42,14 @@ def get_open_spaces(
             "id": os.id,
             "name": os.name,
             "building": os.building,
-            "floor": os.floor
+            "floor": os.floor,
+            "address": os.address,
+            "place_name": os.place_name,
+            "latitude": os.latitude,
+            "longitude": os.longitude,
+            "image_url": os.image_url,
+            "opened_at": os.opened_at,
+            "closed_at": os.closed_at
         } for os in open_spaces
     ]
 
@@ -58,7 +64,14 @@ def create_open_space(
     new_open_space = OpenSpace(
         name = data.name,
         building = data.building,
-        floor = data.floor
+        floor = data.floor,
+        address = data.address,
+        place_name = data.place_name,
+        latitude = data.latitude,
+        longitude = data.longitude,
+        image_url = data.image_url,
+        opened_at = data.opened_at,
+        closed_at = data.closed_at
     )
     db.add(new_open_space)
 
@@ -74,7 +87,14 @@ def create_open_space(
         "id": new_open_space.id,
         "name": new_open_space.name,
         "building": new_open_space.building,
-        "floor": new_open_space.floor
+        "floor": new_open_space.floor,
+        "address": new_open_space.address,
+        "place_name": new_open_space.place_name,
+        "latitude": new_open_space.latitude,
+        "longitude": new_open_space.longitude,
+        "image_url": new_open_space.image_url,
+        "opened_at": new_open_space.opened_at,
+        "closed_at": new_open_space.closed_at
     }
 
 @router.get("/{open_space_id}/desks", response_model=list[DeskLayoutItem])
