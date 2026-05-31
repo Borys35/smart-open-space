@@ -113,12 +113,12 @@ const data = {
         },
         {
           title: "Calendar",
-          url: "#",
+          url: "/reservations/calendar",
         },
-        {
-          title: "Create reservation",
-          url: "#",
-        },
+        // {
+        //   title: "Create reservation",
+        //   url: "#",
+        // },
       ],
     },
     {

@@ -23,6 +23,7 @@ export default [
             ]),
             ...prefix("reservations", [
                 route("all", "routes/dashboard/reservations/all.tsx"),
+                route("calendar", "routes/dashboard/reservations/calendar.tsx"),
             ])
         ])
     ]),
