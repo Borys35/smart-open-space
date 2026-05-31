@@ -26,3 +26,9 @@ To build the images and start all services, simply run:
 docker compose up --build
 ```
 add `-d` flag for daemon (running the app as a background service).
+
+### 4. Generate dummy content
+To generate dummy content for testing purpose, run script below
+```bash
+docker compose exec backend python app/scripts/generate_dummy_content.py --users 20 --memberships 12 --invitations 15 --reservations 30 --desks 16
+```
