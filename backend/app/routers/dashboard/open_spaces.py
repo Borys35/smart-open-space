@@ -352,23 +352,6 @@ def get_open_space_users(
     
     result = []
 
-    if role is None or role == "USER":
-        memberships = db.query(Membership, User).join(
-            User, Membership.user_id == User.id
-        ).filter(
-            Membership.open_space_id == open_space_id
-        ).all()
-
-        for membership, user in memberships:
-            result.append({
-                "id": user.id,
-                "username": user.username,
-                "email": user.email,
-                "role": "USER",
-                "membership_status": membership.status,
-                "credits_balance": membership.credits_balance
-            })
-
     if role is None or role == "MANAGER":
         manager_assignments = db.query(OpenSpaceManager, User).join(
             User, OpenSpaceManager.user_id == User.id
@@ -386,6 +369,23 @@ def get_open_space_users(
                 "membership_status": None,
                 "credits_balance": None
             }) 
+
+    if role is None or role == "USER":
+        memberships = db.query(Membership, User).join(
+            User, Membership.user_id == User.id
+        ).filter(
+            Membership.open_space_id == open_space_id
+        ).all()
+
+        for membership, user in memberships:
+            result.append({
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "role": "USER",
+                "membership_status": membership.status,
+                "credits_balance": membership.credits_balance
+            })
 
     return result
 

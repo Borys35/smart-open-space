@@ -36,7 +36,7 @@ export default function AllUsers() {
 
     const handlePromoteUser = async (userId: number) => {
         try {
-            const response = await fetch(`/api/users/${userId}/promote`, {
+            const response = await fetch(`/api/dashboard/open-spaces/${activeOpenSpace?.id}/users/${userId}/promote`, {
                 method: "POST",
                 credentials: "include",
                 headers: { "Authorization": "Bearer " + localStorage.getItem("accessToken") },
