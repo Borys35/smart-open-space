@@ -22,8 +22,9 @@ export default [
                 index("routes/dashboard/open-spaces/settings.tsx"),
             ]),
             ...prefix("reservations", [
-                route("all", "routes/dashboard/reservations/all.tsx"),
+                index("routes/dashboard/reservations/all.tsx"),
                 route("calendar", "routes/dashboard/reservations/calendar.tsx"),
+                route(":id", "routes/dashboard/reservations/details.tsx"),
             ])
         ])
     ]),

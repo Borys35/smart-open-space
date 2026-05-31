@@ -109,7 +109,7 @@ const data = {
       items: [
         {
           title: "All Reservations",
-          url: "/reservations/all",
+          url: "/reservations",
         },
         {
           title: "Calendar",

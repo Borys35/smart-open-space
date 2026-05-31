@@ -82,6 +82,11 @@ export default function ReservationsList({ reservations, onCancel }: Reservation
                             <Button variant="destructive" size="sm" onClick={() => onCancel && onCancel(reservation.id)}>
                                 Cancel
                             </Button>
+                            <Button variant="outline" size="sm" onClick={() => onCancel && onCancel(reservation.id)}>
+                                <Link to={`/reservations/${reservation.id}`}>
+                                    View
+                                </Link>
+                            </Button>
                         </TableCell>
                     </TableRow>
                 ))}

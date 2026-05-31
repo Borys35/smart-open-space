@@ -375,6 +375,7 @@ export default function Reservations() {
                         />
                         <ListPagination className="mb-4" total={total} page={page} limit={limit} onPageChange={handlePageChange} onLimitChange={handleLimitChange} />
                         <ReservationsList reservations={reservations} />
+                        <ListPagination total={total} page={page} limit={limit} onPageChange={handlePageChange} onLimitChange={handleLimitChange} />
                     </div>
                 )}
             </div>

@@ -1,6 +1,6 @@
 
 import { useEffect, useMemo, useState } from "react"
-import { useSearchParams } from "react-router"
+import { Link, useSearchParams } from "react-router"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { useOpenSpace } from "~/providers/OpenSpaceProvider"
@@ -372,18 +372,20 @@ export default function ReservationCalendar() {
                                                     const width = Math.max(((clippedEnd.getTime() - clippedStart.getTime()) / (60 * 60 * 1000)) * HOUR_WIDTH, 4)
 
                                                     return (
-                                                        <div
-                                                            key={reservation.id}
-                                                            className={`absolute top-1.5 h-10.5 rounded-md border px-2 py-1 text-[11px] text-white shadow-sm ${STATUS_COLOR[reservation.status]}`}
-                                                            style={{
-                                                                left,
-                                                                width,
-                                                            }}
-                                                            title={`${reservation.username} (${reservation.status}) ${formatReservationTimeRange(reservationStart, reservationEnd)}`}
-                                                        >
-                                                            <p className="truncate font-semibold leading-tight">{reservation.username}</p>
-                                                            <p className="truncate leading-tight opacity-90">{formatReservationTimeRange(reservationStart, reservationEnd)}</p>
-                                                        </div>
+                                                        <Link to={`/reservations/${reservation.id}`}>
+                                                            <div
+                                                                key={reservation.id}
+                                                                className={`absolute top-1.5 h-10.5 rounded-md border px-2 py-1 text-[11px] text-white shadow-sm ${STATUS_COLOR[reservation.status]}`}
+                                                                style={{
+                                                                    left,
+                                                                    width,
+                                                                }}
+                                                                title={`${reservation.username} (${reservation.status}) ${formatReservationTimeRange(reservationStart, reservationEnd)}`}
+                                                            >
+                                                                <p className="truncate font-semibold leading-tight">{reservation.username}</p>
+                                                                <p className="truncate leading-tight opacity-90">{formatReservationTimeRange(reservationStart, reservationEnd)}</p>
+                                                            </div>
+                                                        </Link>
                                                     )
                                                 })}
                                             </div>
