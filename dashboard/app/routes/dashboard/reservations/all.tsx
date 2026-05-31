@@ -1,28 +1,7 @@
-import { use, useEffect, useState } from "react";
-import { CreateOpenSpaceForm } from "~/components/forms/create-open-space-form";
-import { InviteUserForm } from "~/components/forms/invite-user-form";
-import type { Invitation } from "~/components/lists/invitations-list";
-import InvitationsList from "~/components/lists/invitations-list";
-import { Button } from "~/components/ui/button"
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router";
 import { useOpenSpace } from "~/providers/OpenSpaceProvider";
-import UsersList, { type UserListItem } from "~/components/lists/users-list";
 import ReservationsList, { type ReservationListItem } from "~/components/lists/reservations-list";
-import { Field, FieldLabel } from "@/components/ui/field"
-import {
-    Pagination,
-    PaginationContent,
-    PaginationItem,
-    PaginationNext,
-    PaginationPrevious,
-} from "@/components/ui/pagination"
-import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
 import { ListPagination } from "~/components/lists/list-pagination";
 
 export const handle = {
@@ -40,19 +19,61 @@ interface ReservationsResponse {
 export const SORT_VALUES = { "start_time_desc": "Start time (desc)", "start_time_asc": "Start time (asc)" }
 export const STATUS_FILTER_VALUES = { "PENDING": "Pending", "CONFIRMED": "Confirmed", "CANCELLED": "Cancelled", "DONE": "Done" }
 
+function readPositiveNumber(value: string | null, fallback: number) {
+    const parsedValue = Number(value)
+
+    return Number.isInteger(parsedValue) && parsedValue > 0 ? parsedValue : fallback
+}
+
 
 export default function Reservations() {
+    const [searchParams, setSearchParams] = useSearchParams()
     const [reservations, setReservations] = useState<ReservationListItem[]>([])
-    const [page, setPage] = useState(1)
+    const [page, setPage] = useState(() => readPositiveNumber(searchParams.get("page"), 1))
     const [total, setTotal] = useState(0)
-    const [limit, setLimit] = useState(10)
+    const [limit, setLimit] = useState(() => readPositiveNumber(searchParams.get("limit"), 10))
     const [error, setError] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const { activeOpenSpace } = useOpenSpace()
 
     useEffect(() => {
+        const nextPage = readPositiveNumber(searchParams.get("page"), 1)
+        const nextLimit = readPositiveNumber(searchParams.get("limit"), 10)
+
+        setPage(currentPage => currentPage === nextPage ? currentPage : nextPage)
+        setLimit(currentLimit => currentLimit === nextLimit ? currentLimit : nextLimit)
+    }, [searchParams])
+
+    const updateSearchParams = (nextPage: number, nextLimit: number) => {
+        const nextParams = new URLSearchParams(searchParams)
+
+        nextParams.set("page", String(nextPage))
+        nextParams.set("limit", String(nextLimit))
+
+        setSearchParams(nextParams)
+    }
+
+    const handlePageChange = (nextPage: number) => {
+        if (nextPage === page || nextPage < 1 || nextPage > Math.ceil(total / limit)) {
+            return
+        }
+        setPage(nextPage)
+        updateSearchParams(nextPage, limit)
+    }
+
+    const handleLimitChange = (nextLimit: number) => {
+        setPage(1)
+        setLimit(nextLimit)
+        updateSearchParams(1, nextLimit)
+    }
+
+    useEffect(() => {
+        if (!activeOpenSpace?.id) {
+            return
+        }
+
         setIsLoading(true)
-        fetch(`/api/dashboard/open-spaces/${activeOpenSpace?.id}/reservations?limit=10`, {
+        fetch(`/api/dashboard/open-spaces/${activeOpenSpace?.id}/reservations?limit=${limit}&page=${page}`, {
             credentials: "include",
             headers: { "Authorization": "Bearer " + localStorage.getItem("accessToken") },
         })
@@ -70,26 +91,7 @@ export default function Reservations() {
             })
             .catch(err => setError(err.message))
             .finally(() => setIsLoading(false))
-    }, [activeOpenSpace?.id])
-
-    const handlePromoteUser = async (userId: number) => {
-        try {
-            const response = await fetch(`/api/dashboard/open-spaces/${activeOpenSpace?.id}/users/${userId}/promote`, {
-                method: "POST",
-                credentials: "include",
-                headers: { "Authorization": "Bearer " + localStorage.getItem("accessToken") },
-            })
-
-            if (!response.ok) {
-                const result = await response.json()
-                throw new Error(result.detail || "Failed to promote user")
-            }
-
-            setReservations(prev => prev.map(reservation => reservation.id === userId ? { ...reservation, role: "MANAGER" } : reservation))
-        } catch (err: any) {
-            setError(err.message)
-        }
-    }
+    }, [activeOpenSpace?.id, page, limit])
 
     return (
         <div className="flex flex-col h-full w-full p-4 md:p-6 lg:p-8">
@@ -106,9 +108,8 @@ export default function Reservations() {
                     </p>
                 ) : (
                     <div>
-
+                        <ListPagination className="mb-4" total={total} page={page} limit={limit} onPageChange={handlePageChange} onLimitChange={handleLimitChange} />
                         <ReservationsList reservations={reservations} />
-                        <ListPagination total={total} page={page} limit={limit} onPageChange={(newPage) => setPage(newPage)} />
                     </div>
                 )}
             </div>

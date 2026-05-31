@@ -21,15 +21,16 @@ interface ListPaginationProps {
     limit: number;
     onPageChange: (newPage: number) => void;
     onLimitChange?: (newLimit: number) => void;
+    className?: string;
 }
 
 
-export function ListPagination({ total, page, limit, onPageChange, onLimitChange }: ListPaginationProps) {
+export function ListPagination({ total, page, limit, onPageChange, onLimitChange, className }: ListPaginationProps) {
     return (
-        <div className="flex items-center justify-between gap-4">
+        <div className={`flex items-center justify-between gap-4 ${className || ''}`}>
             <Field orientation="horizontal" className="w-fit">
                 <FieldLabel htmlFor="select-rows-per-page">Rows per page</FieldLabel>
-                <Select defaultValue="25" onValueChange={(value) => onLimitChange && onLimitChange(Number(value))}>
+                <Select value={limit.toString()} onValueChange={(value) => onLimitChange && onLimitChange(Number(value))}>
                     <SelectTrigger className="w-20" id="select-rows-per-page">
                         <SelectValue />
                     </SelectTrigger>
@@ -49,13 +50,19 @@ export function ListPagination({ total, page, limit, onPageChange, onLimitChange
             <Pagination className="mx-0 w-auto">
                 <PaginationContent>
                     <PaginationItem>
-                        <PaginationPrevious href="#" />
+                        <PaginationPrevious onClick={(e) => {
+                            e.preventDefault()
+                            onPageChange(page - 1)
+                        }} />
                     </PaginationItem>
                     <p className="text-sm text-muted-foreground mx-2">
                         Page {page}
                     </p>
                     <PaginationItem>
-                        <PaginationNext href="#" />
+                        <PaginationNext onClick={(e) => {
+                            e.preventDefault()
+                            onPageChange(page + 1)
+                        }} />
                     </PaginationItem>
                 </PaginationContent>
             </Pagination>
