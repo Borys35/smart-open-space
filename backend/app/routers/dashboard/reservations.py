@@ -30,7 +30,7 @@ def get_open_space_reservations(
     if limit < 1 or limit > 100:
         raise HTTPException(status_code=400, detail="Limit must be between 1 and 100")
     
-    allowed_sort_values = ["start_time_desc", "start_time_asc"]
+    allowed_sort_values = ["start_time_desc", "start_time_asc", "end_time_desc", "end_time_asc"]
 
     if sort not in allowed_sort_values :
         raise HTTPException(status_code=400, detail="Invalid sort value")
@@ -88,6 +88,10 @@ def get_open_space_reservations(
 
     if sort == "start_time_asc":
         query = query.order_by(Reservation.start_time.asc())
+    elif sort == "end_time_asc":
+        query = query.order_by(Reservation.end_time.asc())
+    elif sort == "end_time_desc":
+        query = query.order_by(Reservation.end_time.desc())
     else:
         query = query.order_by(Reservation.start_time.desc())
 
