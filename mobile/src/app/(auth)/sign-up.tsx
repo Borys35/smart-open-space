@@ -108,6 +108,7 @@ export default function SignUp() {
         ref={passwordInputRef}
         autoCapitalize="none"
         autoComplete="new-password"
+        autoCorrect={false}
         placeholder="Password"
         returnKeyType="done"
         secureTextEntry

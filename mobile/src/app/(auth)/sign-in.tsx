@@ -90,6 +90,7 @@ export default function SignIn() {
         ref={passwordInputRef}
         autoCapitalize="none"
         autoComplete="current-password"
+        autoCorrect={false}
         placeholder="Password"
         returnKeyType="done"
         secureTextEntry
