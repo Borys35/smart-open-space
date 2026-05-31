@@ -196,7 +196,7 @@ class MessageResponse(BaseModel):
 
 class DashboardInviteResponse(BaseModel):
     id: int 
-    email: str
+    email: str | None = None
     status: str
     invited_user: UserResponse | None = None
     created_at: datetime

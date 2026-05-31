@@ -249,6 +249,8 @@ def get_open_space_invites(
             "invited_user": {
                 "id": invite.invited_user.id,
                 "username": invite.invited_user.username,
+                "email": invite.invited_user.email,
+                "role": invite.invited_user.role.name
             } if invite.invited_user else None,
             "created_at": invite.created_at
         } for invite in invites
