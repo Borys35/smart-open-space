@@ -35,9 +35,6 @@ interface ReservationsListProps {
     onCancel?: (reservationId: number) => void;
 }
 
-export const SORT_VALUES = { "start_time_desc": "Start time (desc)", "start_time_asc": "Start time (asc)" }
-export const STATUS_FILTER_VALUES = { "PENDING": "Pending", "CONFIRMED": "Confirmed", "CANCELLED": "Cancelled", "DONE": "Done" }
-
 export default function ReservationsList({ reservations, onCancel }: ReservationsListProps) {
     if (reservations.length === 0) {
         return (
