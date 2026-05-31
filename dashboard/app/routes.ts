@@ -20,6 +20,9 @@ export default [
             ]),
             ...prefix("settings", [
                 index("routes/dashboard/open-spaces/settings.tsx"),
+            ]),
+            ...prefix("reservations", [
+                route("all", "routes/dashboard/reservations/all.tsx"),
             ])
         ])
     ]),

@@ -108,8 +108,8 @@ const data = {
       ),
       items: [
         {
-          title: "All reservations",
-          url: "#",
+          title: "All Reservations",
+          url: "/reservations/all",
         },
         {
           title: "Calendar",
