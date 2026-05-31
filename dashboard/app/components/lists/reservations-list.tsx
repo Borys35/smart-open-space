@@ -73,8 +73,8 @@ export default function ReservationsList({ reservations, onCancel }: Reservation
                         <TableCell>
                             {reservation.user_id ? reservation.username : "N/A"}
                         </TableCell>
-                        <TableCell>{new Date(reservation.start_time).toLocaleDateString()}</TableCell>
-                        <TableCell>{new Date(reservation.end_time).toLocaleDateString()}</TableCell>
+                        <TableCell>{new Date(reservation.start_time).toLocaleDateString(navigator.language, { hour: '2-digit', minute: '2-digit' })}</TableCell>
+                        <TableCell>{new Date(reservation.end_time).toLocaleDateString(navigator.language, { hour: '2-digit', minute: '2-digit' })}</TableCell>
                         <TableCell>{reservation.credit_cost}</TableCell>
                         <TableCell>
                             <Badge variant="default">
