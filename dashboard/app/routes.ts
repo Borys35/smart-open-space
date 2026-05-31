@@ -12,6 +12,7 @@ export default [
             ]),
             ...prefix("desks", [
                 route("editor", "routes/dashboard/desks/editor.tsx"),
+                route("live", "routes/dashboard/desks/live.tsx"),
             ]),
             ...prefix("users", [
                 route("invite", "routes/dashboard/users/invite.tsx"),

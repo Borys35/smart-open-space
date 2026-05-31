@@ -91,11 +91,11 @@ export function DesksEditorCanvas({ desks, setDesks, overlappingDesks }: DesksEd
 
     return (
         <div>
-            <div className="flex flex-col max-xl:hidden xl:flex-row w-full border rounded-lg overflow-hidden bg-background shadow-sm">
+            <div className="flex flex-col max-xl:hidden xl:flex-row w-full border rounded-lg overflow-hidden bg-background shadow-sm h-150">
                 {/* Canvas Area */}
                 <div
                     ref={containerRef}
-                    className="relative w-[600px] h-[600px] bg-slate-100/50 dark:bg-slate-900 overflow-hidden touch-none"
+                    className="relative w-150 h-150 bg-slate-100/50 dark:bg-slate-900 overflow-hidden touch-none"
                     onPointerMove={handlePointerMove}
                     onPointerUp={handlePointerUp}
                 >
@@ -113,7 +113,7 @@ export function DesksEditorCanvas({ desks, setDesks, overlappingDesks }: DesksEd
                             <div
                                 key={desk.id}
                                 className={cn(
-                                    "absolute rounded-lg flex items-center justify-center text-sm font-medium cursor-move transition-colors shadow-sm select-none",
+                                    "absolute text-center rounded-lg flex items-center justify-center text-sm font-medium cursor-move transition-colors shadow-sm select-none",
                                     isOverlapping
                                         ? "bg-red-100 border-2 border-dashed border-red-500 text-red-700 dark:bg-red-900/50 dark:border-red-500/80 dark:text-red-200"
                                         : isSelected
@@ -160,7 +160,7 @@ export function DesksEditorCanvas({ desks, setDesks, overlappingDesks }: DesksEd
                                     onClick={() => setSelectedDeskId(desk.id)}
                                 >
                                     <div className="flex items-center justify-between">
-                                        <span className="font-medium truncate max-w-[120px]">{desk.data || "Untitled"}</span>
+                                        <span className="font-medium truncate max-w-30">{desk.data || "Untitled"}</span>
                                         <Button
                                             variant="ghost"
                                             size="sm"
@@ -197,7 +197,7 @@ export function DesksEditorCanvas({ desks, setDesks, overlappingDesks }: DesksEd
                     </div>
                 </div>
             </div>
-            <div className="mt-4 text-sm text-muted-foreground text-center xl:hidden">
+            <div className="mt-4 text-sm text-red-600 text-center xl:hidden">
                 <p>Viewport must be at least 1280px wide</p>
             </div>
         </div>

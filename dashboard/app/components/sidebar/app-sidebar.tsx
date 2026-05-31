@@ -91,7 +91,7 @@ const data = {
       items: [
         {
           title: "Live view",
-          url: "#",
+          url: "/desks/live",
         },
         {
           title: "Editor",
