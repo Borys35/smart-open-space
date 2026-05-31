@@ -56,7 +56,7 @@ export function InviteUserForm({
             if (!openSpaceId) {
                 throw new Error("No active open space selected")
             }
-            const response = await fetch(`/api/invites`, {
+            const response = await fetch(`/api/dashboard/invites`, {
                 method: "POST",
                 credentials: "include",
                 headers: { "Content-Type": "application/json", "Authorization": "Bearer " + localStorage.getItem("accessToken") },
@@ -71,7 +71,7 @@ export function InviteUserForm({
 
             console.log("User invited:", result)
             reset()
-            // navigate("/")
+            navigate("/users/pending")
         } catch (error: any) {
             setServerError(error.message)
         }

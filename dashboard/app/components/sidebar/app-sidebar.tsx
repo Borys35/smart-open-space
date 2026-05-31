@@ -69,11 +69,11 @@ const data = {
       ),
       items: [
         {
-          title: "All users",
-          url: "#",
+          title: "All Users",
+          url: "/users/all",
         },
         {
-          title: "Invite user",
+          title: "Invite a User",
           url: "/users/invite",
         },
         {

@@ -5,48 +5,49 @@ import type { Invitation } from "~/components/lists/invitations-list";
 import InvitationsList from "~/components/lists/invitations-list";
 import { Button } from "~/components/ui/button"
 import { useOpenSpace } from "~/providers/OpenSpaceProvider";
+import UsersList, { type UserListItem } from "~/components/lists/users-list";
 
 export const handle = {
-    title: "Pending Invitations",
+    title: "All Users",
 };
 
-export default function UsersPendingInvitations() {
-    const [pendingInvitations, setPendingInvitations] = useState<Invitation[]>([])
+export default function AllUsers() {
+    const [users, setUsers] = useState<UserListItem[]>([])
     const [error, setError] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const { activeOpenSpace } = useOpenSpace()
 
     useEffect(() => {
         setIsLoading(true)
-        fetch(`/api/dashboard/open-spaces/${activeOpenSpace?.id}/invites?pending_only=true`, {
+        fetch(`/api/dashboard/open-spaces/${activeOpenSpace?.id}/users`, {
             credentials: "include",
             headers: { "Authorization": "Bearer " + localStorage.getItem("accessToken") },
         })
             .then(res => {
                 if (!res.ok) {
-                    throw new Error("Failed to load pending invitations")
+                    throw new Error("Failed to load all users")
                 }
                 return res.json()
             })
-            .then(data => setPendingInvitations(data))
+            .then(data => setUsers(data))
             .catch(err => setError(err.message))
             .finally(() => setIsLoading(false))
     }, [activeOpenSpace?.id])
 
-    const handleCancelInvite = async (inviteId: number) => {
+    const handlePromoteUser = async (userId: number) => {
         try {
-            const response = await fetch(`/api/dashboard/invites/${inviteId}`, {
-                method: "DELETE",
+            const response = await fetch(`/api/users/${userId}/promote`, {
+                method: "POST",
                 credentials: "include",
                 headers: { "Authorization": "Bearer " + localStorage.getItem("accessToken") },
             })
 
             if (!response.ok) {
                 const result = await response.json()
-                throw new Error(result.detail || "Failed to cancel invitation")
+                throw new Error(result.detail || "Failed to promote user")
             }
 
-            setPendingInvitations(prev => prev.filter(invite => invite.id !== inviteId))
+            setUsers(prev => prev.map(user => user.id === userId ? { ...user, role: "MANAGER" } : user))
         } catch (err: any) {
             setError(err.message)
         }
@@ -54,7 +55,7 @@ export default function UsersPendingInvitations() {
 
     return (
         <div className="flex flex-col h-full w-full p-4 md:p-6 lg:p-8">
-            <h1 className="text-2xl font-bold mb-6">Pending Invitations</h1>
+            <h1 className="text-2xl font-bold mb-6">All Users</h1>
             <div className="self-stretch pt-8">
                 {error && (
                     <p className="pb-8 text-sm text-center font-medium text-destructive">
@@ -63,10 +64,10 @@ export default function UsersPendingInvitations() {
                 )}
                 {isLoading ? (
                     <p className="text-sm text-center font-medium text-muted-foreground">
-                        Loading pending invitations...
+                        Loading all users...
                     </p>
                 ) : (
-                    <InvitationsList invitations={pendingInvitations} onCancel={handleCancelInvite} />
+                    <UsersList users={users} onPromote={handlePromoteUser} />
                 )}
             </div>
         </div>

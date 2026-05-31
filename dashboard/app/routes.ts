@@ -16,6 +16,7 @@ export default [
             ...prefix("users", [
                 route("invite", "routes/dashboard/users/invite.tsx"),
                 route("pending", "routes/dashboard/users/pending-invitations.tsx"),
+                route("all", "routes/dashboard/users/all-users.tsx"),
             ]),
             ...prefix("settings", [
                 index("routes/dashboard/open-spaces/settings.tsx"),
