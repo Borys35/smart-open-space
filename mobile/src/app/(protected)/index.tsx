@@ -5,12 +5,31 @@ import { useEffect } from "react";
 import {
   ActivityIndicator,
   ScrollView,
-  View,
+  StyleSheet,
   Text,
   TouchableOpacity,
-  StyleSheet,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+import type { Invitation } from "@/hooks/use-invites";
+
+function getSpaceLocation(invitation: Invitation) {
+  const openSpace = invitation.open_space;
+
+  if (!openSpace) {
+    return null;
+  }
+
+  return [
+    openSpace.place_name,
+    openSpace.address,
+    openSpace.building ? `Building ${openSpace.building}` : null,
+    `Floor ${openSpace.floor}`,
+  ]
+    .filter(Boolean)
+    .join(" • ");
+}
 
 export default function Home() {
   const { user, logout } = useAuth();
@@ -83,6 +102,9 @@ export default function Home() {
           </View>
         ) : (
           invitations.data.map((invitation) => {
+            const openSpace = invitation.open_space;
+            const spaceTitle = openSpace?.name ?? `Open space #${invitation.space_id}`;
+            const spaceLocation = getSpaceLocation(invitation);
             const isAccepting = acceptInvite.isPending && acceptInvite.variables === invitation.id;
             const isRejecting = rejectInvite.isPending && rejectInvite.variables === invitation.id;
             const actionError =
@@ -95,11 +117,21 @@ export default function Home() {
             return (
               <View key={invitation.id} style={styles.inviteCard}>
                 <Text style={styles.inviteTitle} selectable>
-                  Open space #{invitation.space_id}
+                  {spaceTitle}
                 </Text>
-                <Text style={styles.inviteDetail} selectable>
-                  Invited account: {invitation.invited_email}
-                </Text>
+                {spaceLocation ? (
+                  <Text style={styles.inviteLocation} selectable>
+                    {spaceLocation}
+                  </Text>
+                ) : null}
+                <View style={styles.inviteMeta}>
+                  <Text style={styles.inviteDetail} selectable>
+                    Invite #{invitation.id}
+                  </Text>
+                  <Text style={styles.inviteDetail} selectable>
+                    {invitation.invited_email}
+                  </Text>
+                </View>
 
                 {actionError ? (
                   <Text style={styles.actionError} selectable>
@@ -236,8 +268,16 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "600",
   },
-  inviteDetail: {
+  inviteLocation: {
     fontSize: 14,
+    color: "#3A3A3C",
+    lineHeight: 20,
+  },
+  inviteMeta: {
+    gap: 3,
+  },
+  inviteDetail: {
+    fontSize: 13,
     color: "#666",
   },
   actionError: {

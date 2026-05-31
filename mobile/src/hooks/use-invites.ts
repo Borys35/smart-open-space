@@ -7,6 +7,21 @@ export interface Invitation {
   space_id: number;
   invited_email: string;
   status: "PENDING" | "ACCEPTED" | "REJECTED" | "EXPIRED";
+  open_space: MobileOpenSpaceSummary | null;
+}
+
+export interface MobileOpenSpaceSummary {
+  id: number;
+  name: string;
+  building: string | null;
+  floor: number;
+  address: string | null;
+  place_name: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  image_url: string | null;
+  opened_at: string | null;
+  closed_at: string | null;
 }
 
 const inviteKeys = {

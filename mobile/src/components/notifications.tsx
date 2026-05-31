@@ -9,7 +9,7 @@ import { Platform } from "react-native";
 import uuid from "react-native-uuid";
 
 export function NotificationsHandler() {
-  const { user, token } = useAuth();
+  const { isAuthenticated, token, user } = useAuth();
 
   const deviceId = useDeviceIdStore((s) => (user ? s.deviceIds[user.id] : undefined));
   const setDeviceId = useDeviceIdStore((s) => s.setDeviceId);
@@ -21,7 +21,7 @@ export function NotificationsHandler() {
   }, [user, deviceId, setDeviceId]);
 
   useEffect(() => {
-    if (!user || !deviceId) return;
+    if (!isAuthenticated || !user || !token || !deviceId) return;
 
     const register = async () => {
       try {
@@ -61,7 +61,7 @@ export function NotificationsHandler() {
     };
 
     register();
-  }, [user, token, deviceId]);
+  }, [isAuthenticated, user, token, deviceId]);
 
   return null;
 }
