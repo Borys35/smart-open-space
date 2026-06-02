@@ -4,7 +4,7 @@ from sqlalchemy import or_
 
 from app.dependencies import get_db, get_current_user
 from app.models import User, OpenSpace, Membership, Invitation
-from app.schemas import MobileOpenSpaceSummary
+from app.schemas import MobileOpenSpaceSummary, MobileOpenSpaceCreditsResponse
 
 router = APIRouter(prefix="/api/open-spaces", tags=["mobile-open-spaces"])
 
@@ -41,6 +41,34 @@ def get_my_open_spaces(
     )
 
     return [serialize_open_space(open_space) for open_space in open_spaces]
+
+@router.get("/{open_space_id}/credits", response_model=MobileOpenSpaceCreditsResponse)
+def get_my_open_space_credits(
+    open_space_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    open_space = db.query(OpenSpace).filter(OpenSpace.id == open_space_id).first()
+
+    if not open_space:
+        raise HTTPException(status_code=404, detail="Open space not found")
+
+    if not open_space.is_active:
+        raise HTTPException(status_code=400, detail="Open space is inactive")
+
+    membership = db.query(Membership).filter(
+        Membership.open_space_id == open_space_id,
+        Membership.user_id == current_user.id,
+        Membership.status == "ACTIVE"
+    ).first()
+
+    if not membership:
+        raise HTTPException(status_code=403, detail="You are not a member of this open space")
+
+    return {
+        "open_space_id": open_space_id,
+        "credits_balance": membership.credits_balance
+    }
 
 @router.get("/{open_space_id}", response_model=MobileOpenSpaceSummary)
 def get_open_space_details(

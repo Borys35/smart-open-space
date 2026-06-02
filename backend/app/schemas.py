@@ -375,6 +375,10 @@ class MobileOpenSpaceSummary(BaseModel):
     opened_at: datetime | None = None
     closed_at: datetime | None = None
 
+class MobileOpenSpaceCreditsResponse(BaseModel):
+    open_space_id: int
+    credits_balance: int
+
 class InviteResponse(BaseModel):
     id: int 
     user_id: int | None = None
