@@ -2,6 +2,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useInvites, useRespondToInvite } from "@/hooks/use-invites";
 import { useOpenSpaces } from "@/hooks/use-open-spaces";
 import * as Notifications from "expo-notifications";
+import { router } from "expo-router";
 import { useEffect } from "react";
 import {
   ActivityIndicator,
@@ -105,7 +106,16 @@ export default function Home() {
             const spaceLocation = getOpenSpaceLocation(openSpace);
 
             return (
-              <View key={openSpace.id} style={styles.inviteCard}>
+              <TouchableOpacity
+                key={openSpace.id}
+                style={styles.inviteCard}
+                onPress={() =>
+                  router.push({
+                    pathname: "/spaces/[id]",
+                    params: { id: String(openSpace.id) },
+                  })
+                }
+              >
                 <Text style={styles.inviteTitle} selectable>
                   {openSpace.name}
                 </Text>
@@ -126,7 +136,8 @@ export default function Home() {
                     </Text>
                   ) : null}
                 </View>
-              </View>
+                <Text style={styles.openSpaceAction}>Open space</Text>
+              </TouchableOpacity>
             );
           })
         )}
@@ -333,6 +344,17 @@ const styles = StyleSheet.create({
   inviteDetail: {
     fontSize: 13,
     color: "#666",
+  },
+  openSpaceAction: {
+    alignSelf: "flex-start",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    overflow: "hidden",
+    backgroundColor: "#E7F0FF",
+    color: "#007AFF",
+    fontSize: 14,
+    fontWeight: "600",
   },
   actionError: {
     fontSize: 14,
