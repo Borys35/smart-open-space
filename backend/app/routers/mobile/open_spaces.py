@@ -8,6 +8,40 @@ from app.schemas import MobileOpenSpaceSummary
 
 router = APIRouter(prefix="/api/open-spaces", tags=["mobile-open-spaces"])
 
+def serialize_open_space(open_space: OpenSpace):
+    return {
+        "id": open_space.id,
+        "name": open_space.name,
+        "building": open_space.building,
+        "floor": open_space.floor,
+        "address": open_space.address,
+        "place_name": open_space.place_name,
+        "latitude": open_space.latitude,
+        "longitude": open_space.longitude,
+        "image_url": open_space.image_url,
+        "opened_at": open_space.opened_at,
+        "closed_at": open_space.closed_at
+    }
+
+@router.get("", response_model=list[MobileOpenSpaceSummary])
+def get_my_open_spaces(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    open_spaces = (
+        db.query(OpenSpace)
+        .join(Membership, Membership.open_space_id == OpenSpace.id)
+        .filter(
+            Membership.user_id == current_user.id,
+            Membership.status == "ACTIVE",
+            OpenSpace.is_active == True
+        )
+        .order_by(OpenSpace.name.asc())
+        .all()
+    )
+
+    return [serialize_open_space(open_space) for open_space in open_spaces]
+
 @router.get("/{open_space_id}", response_model=MobileOpenSpaceSummary)
 def get_open_space_details(
     open_space_id: int,
@@ -43,16 +77,4 @@ def get_open_space_details(
     if not membership and not invite:
         raise HTTPException(status_code=403, detail="You do not have access to this open space")
     
-    return {
-        "id": open_space.id,
-        "name": open_space.name,
-        "building": open_space.building,
-        "floor": open_space.floor,
-        "address": open_space.address,
-        "place_name": open_space.place_name,
-        "latitude": open_space.latitude,
-        "longitude": open_space.longitude,
-        "image_url": open_space.image_url,
-        "opened_at": open_space.opened_at,
-        "closed_at": open_space.closed_at
-    }
+    return serialize_open_space(open_space)
