@@ -250,6 +250,10 @@ class ReservationCreate(BaseModel):
     start_time: datetime
     end_time: datetime
 
+class ReservationTimeUpdate(BaseModel):
+    start_time: datetime
+    end_time: datetime
+
 class ReservationResponse(BaseModel):
     id: int
     desk_id: int
