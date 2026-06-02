@@ -1,5 +1,6 @@
 import { useAuth } from "@/hooks/use-auth";
 import { useInvites, useRespondToInvite } from "@/hooks/use-invites";
+import { useOpenSpaces } from "@/hooks/use-open-spaces";
 import * as Notifications from "expo-notifications";
 import { useEffect } from "react";
 import {
@@ -12,11 +13,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import type { Invitation } from "@/hooks/use-invites";
+import type { MobileOpenSpaceSummary } from "@/hooks/use-open-spaces";
 
-function getSpaceLocation(invitation: Invitation) {
-  const openSpace = invitation.open_space;
-
+function getOpenSpaceLocation(openSpace: MobileOpenSpaceSummary | null) {
   if (!openSpace) {
     return null;
   }
@@ -34,6 +33,7 @@ function getSpaceLocation(invitation: Invitation) {
 export default function Home() {
   const { user, logout } = useAuth();
   const invitations = useInvites(user?.id ?? null);
+  const openSpaces = useOpenSpaces(user?.id ?? null);
   const acceptInvite = useRespondToInvite(user?.id ?? null, "accept");
   const rejectInvite = useRespondToInvite(user?.id ?? null, "reject");
   const isResponding = acceptInvite.isPending || rejectInvite.isPending;
@@ -78,6 +78,60 @@ export default function Home() {
         </View>
 
         <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Your open spaces</Text>
+          {openSpaces.data ? <Text style={styles.counter}>{openSpaces.data.length}</Text> : null}
+        </View>
+
+        {openSpaces.isPending ? (
+          <View style={styles.inviteState}>
+            <ActivityIndicator color="#007AFF" />
+            <Text style={styles.stateText}>Loading open spaces...</Text>
+          </View>
+        ) : openSpaces.isError ? (
+          <View style={styles.inviteState}>
+            <Text style={styles.error} selectable>
+              {openSpaces.error.message}
+            </Text>
+            <TouchableOpacity style={styles.retryButton} onPress={() => openSpaces.refetch()}>
+              <Text style={styles.retryButtonText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
+        ) : openSpaces.data.length === 0 ? (
+          <View style={styles.inviteState}>
+            <Text style={styles.stateText}>You are not a member of any open spaces yet.</Text>
+          </View>
+        ) : (
+          openSpaces.data.map((openSpace) => {
+            const spaceLocation = getOpenSpaceLocation(openSpace);
+
+            return (
+              <View key={openSpace.id} style={styles.inviteCard}>
+                <Text style={styles.inviteTitle} selectable>
+                  {openSpace.name}
+                </Text>
+                {spaceLocation ? (
+                  <Text style={styles.inviteLocation} selectable>
+                    {spaceLocation}
+                  </Text>
+                ) : null}
+                <View style={styles.inviteMeta}>
+                  <Text style={styles.inviteDetail} selectable>
+                    Open space #{openSpace.id}
+                  </Text>
+                  {openSpace.opened_at || openSpace.closed_at ? (
+                    <Text style={styles.inviteDetail} selectable>
+                      {openSpace.opened_at ? `Opens ${openSpace.opened_at}` : "Opening time unset"}
+                      {" · "}
+                      {openSpace.closed_at ? `Closes ${openSpace.closed_at}` : "Closing time unset"}
+                    </Text>
+                  ) : null}
+                </View>
+              </View>
+            );
+          })
+        )}
+
+        <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Pending invitations</Text>
           {invitations.data ? <Text style={styles.counter}>{invitations.data.length}</Text> : null}
         </View>
@@ -104,7 +158,7 @@ export default function Home() {
           invitations.data.map((invitation) => {
             const openSpace = invitation.open_space;
             const spaceTitle = openSpace?.name ?? `Open space #${invitation.space_id}`;
-            const spaceLocation = getSpaceLocation(invitation);
+            const spaceLocation = getOpenSpaceLocation(openSpace);
             const isAccepting = acceptInvite.isPending && acceptInvite.variables === invitation.id;
             const isRejecting = rejectInvite.isPending && rejectInvite.variables === invitation.id;
             const actionError =
