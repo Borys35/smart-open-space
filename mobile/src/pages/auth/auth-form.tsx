@@ -80,12 +80,7 @@ interface AuthTextInputProps extends TextInputProps {
 
 export function AuthTextInput({ ref, style, ...props }: AuthTextInputProps) {
   return (
-    <TextInput
-      {...props}
-      ref={ref}
-      placeholderTextColor="#C2C2C7"
-      style={[styles.input, style]}
-    />
+    <TextInput {...props} ref={ref} placeholderTextColor="#C2C2C7" style={[styles.input, style]} />
   );
 }
 

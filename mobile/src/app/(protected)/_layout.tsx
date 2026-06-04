@@ -1,5 +1,5 @@
-import { Stack } from "expo-router";
+import { ProtectedTabs } from "@/components/layouts/tabs";
 
 export default function ProtectedLayout() {
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return <ProtectedTabs />;
 }

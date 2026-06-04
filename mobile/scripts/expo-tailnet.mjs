@@ -51,10 +51,7 @@ function getExpoCliPath() {
   }
 
   const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
-  const binPath =
-    typeof packageJson.bin === "string"
-      ? packageJson.bin
-      : packageJson.bin?.expo;
+  const binPath = typeof packageJson.bin === "string" ? packageJson.bin : packageJson.bin?.expo;
 
   if (!binPath) {
     die("The installed `expo` package does not expose an `expo` binary.");
@@ -75,18 +72,11 @@ console.log(`Starting Expo on Tailscale URL: http://${ip}:${PORT}`);
 
 const child = spawn(
   process.execPath,
-  [
-    expoCliPath,
-    "start",
-    "--lan",
-    "--port",
-    PORT,
-    ...process.argv.slice(2),
-  ],
+  [expoCliPath, "start", "--lan", "--port", PORT, ...process.argv.slice(2)],
   {
     stdio: "inherit",
     env,
-  }
+  },
 );
 
 child.on("error", (error) => {
