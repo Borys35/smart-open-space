@@ -17,9 +17,9 @@ PN532_I2C pn532i2c(Wire);
 PN532 nfc(pn532i2c);
 
 // konfiguracja nfc
-const int ledBialy = 19;
-const int ledCzerwony = 18;
-const int buzzer = 17;
+const int ledBialy = 26;
+const int ledCzerwony = 27;
+const int buzzer = 25;
 
 
 void setup(void)
