@@ -315,6 +315,72 @@ class AccessStatsResponse(BaseModel):
     check_ins: int
     check_outs: int
 
+
+class DashboardStatPoint(BaseModel):
+    period_start: datetime
+    period_end: datetime
+    reservations: int = 0
+    access_logs: int = 0
+    check_ins: int = 0
+    check_outs: int = 0
+    successful_access_logs: int = 0
+    denied_access_logs: int = 0
+    invitations: int = 0
+
+
+class DashboardStatusCount(BaseModel):
+    status: str
+    count: int
+
+
+class DashboardCreditRenewalResponse(BaseModel):
+    credit_reset_period: str
+    period_credits: int
+    last_credit_reset_at: datetime | None = None
+    next_credit_reset_at: datetime | None = None
+    time_until_reset_seconds: int | None = None
+
+
+class DashboardHomeStatsResponse(BaseModel):
+    open_space_id: int
+    reservations_this_week: int
+    reservations_by_day: list[DashboardStatPoint]
+    active_memberships: int
+    active_users: int
+    pending_invitations: int
+    avg_credits_balance: float
+    min_credits_balance: int | None = None
+    max_credits_balance: int | None = None
+    credit_renewal: DashboardCreditRenewalResponse
+    reservation_status_breakdown: list[DashboardStatusCount]
+    membership_status_breakdown: list[DashboardStatusCount]
+    invitation_status_breakdown: list[DashboardStatusCount]
+    access_logs_this_week: int
+    check_ins_this_week: int
+    check_outs_this_week: int
+
+
+class DashboardAnalyticsResponse(BaseModel):
+    open_space_id: int
+    date_from: datetime
+    date_to: datetime
+    group_by: str
+    reservations_over_time: list[DashboardStatPoint]
+    access_over_time: list[DashboardStatPoint]
+    invitation_over_time: list[DashboardStatPoint]
+    reservation_status_breakdown: list[DashboardStatusCount]
+    membership_status_breakdown: list[DashboardStatusCount]
+    invitation_status_breakdown: list[DashboardStatusCount]
+    access_result_breakdown: list[DashboardStatusCount]
+    access_action_breakdown: list[DashboardStatusCount]
+    total_reservations: int
+    total_access_logs: int
+    total_invitations: int
+    active_memberships: int
+    active_users: int
+    avg_credits_balance: float
+    credit_renewal: DashboardCreditRenewalResponse
+
 class DashboardInviteResponse(BaseModel):
     id: int 
     email: str | None = None

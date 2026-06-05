@@ -15,6 +15,7 @@ from app.routers.dashboard import users as dashboard_users
 from app.routers.dashboard import invites as dashboard_invites
 from app.routers.dashboard import reservations as dashboard_reservations
 from app.routers.dashboard import access as dashboard_access
+from app.routers.dashboard import stats as dashboard_stats
 from app.routers.mobile import invites as mobile_invites
 from app.routers.mobile import reservations as mobile_reservations
 from app.routers.mobile import push_tokens as mobile_push_tokens
@@ -31,6 +32,7 @@ app.include_router(dashboard_users.router)
 app.include_router(dashboard_invites.router)
 app.include_router(dashboard_reservations.router)
 app.include_router(dashboard_access.router)
+app.include_router(dashboard_stats.router)
 app.include_router(mobile_invites.router)
 app.include_router(mobile_reservations.router)
 app.include_router(mobile_push_tokens.router)
