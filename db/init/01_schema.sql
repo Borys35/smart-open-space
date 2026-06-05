@@ -184,6 +184,17 @@ ON reservations(user_id);
 CREATE INDEX idx_reservations_membership
 ON reservations(membership_id);
 
+-- urządzenia dostępu
+CREATE TABLE access_devices (
+    id SERIAL PRIMARY KEY,
+    open_space_id int NOT NULL REFERENCES open_spaces(id),
+    name varchar(100) NOT NULL,
+    device_key varchar(100) NOT NULL UNIQUE,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- identyfikator dostępu użytkowników
 CREATE TABLE access_credentials (
     id SERIAL PRIMARY KEY,
@@ -199,6 +210,7 @@ CREATE TABLE access_credentials (
 CREATE TABLE access_logs (
     id SERIAL PRIMARY KEY,
     access_credential_id int NOT NULL REFERENCES access_credentials(id),
+    access_device_id int NOT NULL REFERENCES access_devices(id),
     user_id int NOT NULL REFERENCES users(id),
     open_space_id int NOT NULL REFERENCES open_spaces(id),
     reservation_id int REFERENCES reservations(id),

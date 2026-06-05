@@ -49,13 +49,23 @@ def create_reservation(
     
     conflict_reservation = db.query(Reservation).filter(
         Reservation.desk_id == data.desk_id,
-        Reservation.status != "CANCELLED",
+        Reservation.status.notin_(["CANCELLED", "DONE"]),
         data.end_time > Reservation.start_time,
         data.start_time < Reservation.end_time
     ).first()
 
     if conflict_reservation:
         raise HTTPException(status_code=400, detail="Desk is already reserved in this range")
+
+    user_conflict_reservation = db.query(Reservation).filter(
+        Reservation.user_id == current_user.id,
+        Reservation.status.notin_(["CANCELLED", "DONE"]),
+        data.end_time > Reservation.start_time,
+        data.start_time < Reservation.end_time
+    ).first()
+
+    if user_conflict_reservation:
+        raise HTTPException(status_code=400, detail="You already have a reservation in this range")
     
     open_space = db.query(OpenSpace).filter(OpenSpace.id == desk.open_space_id).first()
 
@@ -194,13 +204,24 @@ def update_reservation_time(
     conflict_reservation = db.query(Reservation).filter(
         Reservation.id != reservation_id,
         Reservation.desk_id == reservation.desk_id,
-        Reservation.status != "CANCELLED",
+        Reservation.status.notin_(["CANCELLED", "DONE"]),
         data.end_time > Reservation.start_time,
         data.start_time < Reservation.end_time
     ).first()
 
     if conflict_reservation:
         raise HTTPException(status_code=400, detail="Desk is already reserved in this range")
+
+    user_conflict_reservation = db.query(Reservation).filter(
+        Reservation.id != reservation_id,
+        Reservation.user_id == current_user.id,
+        Reservation.status.notin_(["CANCELLED", "DONE"]),
+        data.end_time > Reservation.start_time,
+        data.start_time < Reservation.end_time
+    ).first()
+
+    if user_conflict_reservation:
+        raise HTTPException(status_code=400, detail="You already have a reservation in this range")
 
     open_space = db.query(OpenSpace).filter(OpenSpace.id == desk.open_space_id).first()
 
@@ -286,7 +307,7 @@ def get_desk_availability(
 
     conflicting_reservations = db.query(Reservation).filter(
         Reservation.desk_id.in_(desk_ids),
-        Reservation.status != "CANCELLED",
+        Reservation.status.notin_(["CANCELLED", "DONE"]),
         start_time < Reservation.end_time,
         end_time > Reservation.start_time
     ).all()

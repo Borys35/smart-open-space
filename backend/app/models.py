@@ -131,6 +131,35 @@ class Membership(Base):
     user = relationship("User", foreign_keys=[user_id])
     open_space = relationship("OpenSpace")
 
+class AccessDevice(Base):
+    __tablename__ = "access_devices"
+
+    id = Column(Integer, primary_key=True, index=True)
+    open_space_id = Column(Integer, ForeignKey("open_spaces.id"), nullable=False)
+    name = Column(String(100), nullable=False)
+    device_key = Column(String(100), unique=True, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
+    open_space = relationship("OpenSpace")
+
+class AccessCredential(Base):
+    __tablename__ = "access_credentials"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    type = Column(
+        SQLEnum("NFC_CARD", "PHONE", name="access_credential_type", create_type=False),
+        nullable=False
+    )
+    uid = Column(String(100), unique=True, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    assigned_at = Column(DateTime, default=datetime.utcnow)
+    deactivated_at = Column(DateTime, nullable=True)
+
+    user = relationship("User", foreign_keys=[user_id])
+
 class PushToken(Base):
     __tablename__ = "push_tokens"
 
@@ -185,3 +214,28 @@ class CreditTransaction(Base):
 
     membership = relationship("Membership", foreign_keys=[membership_id])
     created_by_user = relationship("User", foreign_keys=[created_by])
+
+class AccessLog(Base):
+    __tablename__ = "access_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    access_credential_id = Column(Integer, ForeignKey("access_credentials.id"), nullable=False)
+    access_device_id = Column(Integer, ForeignKey("access_devices.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    open_space_id = Column(Integer, ForeignKey("open_spaces.id"), nullable=False)
+    reservation_id = Column(Integer, ForeignKey("reservations.id"), nullable=True)
+    scanned_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    action = Column(
+        SQLEnum("CHECK_IN", "CHECK_OUT", "ENTRY", "IDENTITY_VERIFICATION", name="access_action", create_type=False),
+        nullable=False
+    )
+    result = Column(
+        SQLEnum("SUCCESS", "DENIED", name="access_result", create_type=False),
+        nullable=False
+    )
+
+    access_credential = relationship("AccessCredential", foreign_keys=[access_credential_id])
+    access_device = relationship("AccessDevice", foreign_keys=[access_device_id])
+    user = relationship("User", foreign_keys=[user_id])
+    open_space = relationship("OpenSpace", foreign_keys=[open_space_id])
+    reservation = relationship("Reservation", foreign_keys=[reservation_id])

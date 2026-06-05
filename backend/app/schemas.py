@@ -194,6 +194,30 @@ class InviteUserRequest(BaseModel):
 class MessageResponse(BaseModel):
     message: str
 
+class SensorAccessCheckRequest(BaseModel):
+    device_key: str
+    credential_uid: str
+
+    @field_validator("device_key", "credential_uid")
+    @classmethod
+    def validate_not_empty(cls, value) -> str:
+        value = value.strip()
+
+        if not value:
+            raise ValueError("Field cannot be empty")
+
+        return value
+
+class SensorAccessCheckResponse(BaseModel):
+    allowed: bool
+    action: str | None = None
+    reason: str
+    user_id: int | None = None
+    open_space_id: int | None = None
+    reservation_id: int | None = None
+    checked_in_at: datetime | None = None
+    checked_out_at: datetime | None = None
+
 class DashboardInviteResponse(BaseModel):
     id: int 
     email: str | None = None
