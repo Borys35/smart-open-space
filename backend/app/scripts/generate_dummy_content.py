@@ -224,25 +224,54 @@ def create_reservations(
     if not desks or not memberships or reservations_count <= 0:
         return reservations
 
-    next_starts: dict[int, datetime] = {
-        desk.id: datetime.utcnow().replace(minute=0, second=0, microsecond=0) - timedelta(days=2)
-        for desk in desks
-    }
+    now = datetime.utcnow()
+    start_of_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    start_of_tomorrow = start_of_today + timedelta(days=1)
+
+    scenarios = [
+        ("before_today", "DONE"),
+        ("before_today", "CANCELLED"),
+        ("during_today", "CONFIRMED"),
+        ("during_today", "CANCELLED"),
+        ("after_today", "PENDING"),
+        ("after_today", "CONFIRMED"),
+    ]
+
+    def build_time_window(window_name: str, cycle: int, duration_hours: int) -> tuple[datetime, datetime]:
+        if window_name == "before_today":
+            start_time = start_of_today - timedelta(days=cycle + 2, hours=duration_hours)
+            end_time = start_time + timedelta(hours=duration_hours)
+            return start_time, end_time
+
+        if window_name == "during_today":
+            start_time = start_of_today + timedelta(hours=8 + (cycle % 4) * 2)
+            end_time = start_time + timedelta(hours=duration_hours)
+            if end_time >= start_of_tomorrow:
+                end_time = start_of_tomorrow - timedelta(minutes=30)
+                start_time = end_time - timedelta(hours=duration_hours)
+            return start_time, end_time
+
+        start_time = start_of_tomorrow + timedelta(days=cycle, hours=8 + (cycle % 4) * 2)
+        end_time = start_time + timedelta(hours=duration_hours)
+        return start_time, end_time
 
     for i in range(reservations_count):
         desk = desks[i % len(desks)]
         membership = memberships[i % len(memberships)]
+        window_name, status = scenarios[i % len(scenarios)]
+        cycle = i // len(scenarios)
 
         duration_hours = random.choice([1, 2, 3, 4])
-        start_time = next_starts[desk.id]
-        end_time = start_time + timedelta(hours=duration_hours)
+        start_time, end_time = build_time_window(window_name, cycle, duration_hours)
 
-        next_starts[desk.id] = end_time + timedelta(hours=1)
+        checked_in_at = None
+        checked_out_at = None
 
-        is_past = end_time < datetime.utcnow()
-        status = "DONE" if is_past else "CONFIRMED"
-        checked_in_at = start_time + timedelta(minutes=5) if is_past else None
-        checked_out_at = end_time if is_past else None
+        if status == "DONE":
+            checked_in_at = start_time + timedelta(minutes=5)
+            checked_out_at = end_time
+        elif status == "CONFIRMED" and start_time <= now <= end_time:
+            checked_in_at = start_time + timedelta(minutes=5)
 
         credit_cost = max(1, math.ceil(duration_hours * open_space.credits_per_hour))
 
