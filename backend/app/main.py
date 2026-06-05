@@ -14,10 +14,12 @@ from app.routers.dashboard import open_spaces as dashboard_open_spaces
 from app.routers.dashboard import users as dashboard_users
 from app.routers.dashboard import invites as dashboard_invites
 from app.routers.dashboard import reservations as dashboard_reservations
+from app.routers.dashboard import access as dashboard_access
 from app.routers.mobile import invites as mobile_invites
 from app.routers.mobile import reservations as mobile_reservations
 from app.routers.mobile import push_tokens as mobile_push_tokens
 from app.routers.mobile import open_spaces as mobile_open_spaces
+from app.routers.mobile import access_credentials as mobile_access_credentials
 from app.routers.sensor import access as sensor_access
 
 app = FastAPI()
@@ -28,10 +30,12 @@ app.include_router(dashboard_open_spaces.router)
 app.include_router(dashboard_users.router)
 app.include_router(dashboard_invites.router)
 app.include_router(dashboard_reservations.router)
+app.include_router(dashboard_access.router)
 app.include_router(mobile_invites.router)
 app.include_router(mobile_reservations.router)
 app.include_router(mobile_push_tokens.router)
 app.include_router(mobile_open_spaces.router)
+app.include_router(mobile_access_credentials.router)
 app.include_router(sensor_access.router)
 
 def credit_reset_loop():

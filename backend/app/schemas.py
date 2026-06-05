@@ -218,6 +218,103 @@ class SensorAccessCheckResponse(BaseModel):
     checked_in_at: datetime | None = None
     checked_out_at: datetime | None = None
 
+class AccessDeviceCreate(BaseModel):
+    open_space_id: int
+    name: str
+    device_key: str
+
+    @field_validator("name", "device_key")
+    @classmethod
+    def validate_not_empty(cls, value) -> str:
+        value = value.strip()
+
+        if not value:
+            raise ValueError("Field cannot be empty")
+
+        return value
+
+class AccessDeviceUpdate(BaseModel):
+    name: str | None = None
+    device_key: str | None = None
+    is_active: bool | None = None
+
+    @field_validator("name", "device_key")
+    @classmethod
+    def validate_not_empty(cls, value) -> str | None:
+        if value is None:
+            return value
+
+        value = value.strip()
+
+        if not value:
+            raise ValueError("Field cannot be empty")
+
+        return value
+
+class AccessDeviceResponse(BaseModel):
+    id: int
+    open_space_id: int
+    name: str
+    device_key: str
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+class AccessCredentialCreate(BaseModel):
+    type: str
+    uid: str
+
+    @field_validator("type")
+    @classmethod
+    def validate_type(cls, value) -> str:
+        value = value.strip().upper()
+
+        if value not in ["NFC_CARD", "PHONE"]:
+            raise ValueError("Type must be NFC_CARD or PHONE")
+
+        return value
+
+    @field_validator("uid")
+    @classmethod
+    def validate_uid(cls, value) -> str:
+        value = value.strip()
+
+        if not value:
+            raise ValueError("UID cannot be empty")
+
+        if len(value) > 100:
+            raise ValueError("UID must be at most 100 characters long")
+
+        return value
+
+class AccessCredentialResponse(BaseModel):
+    id: int
+    user_id: int
+    type: str
+    masked_uid: str
+    is_active: bool
+    assigned_at: datetime
+    deactivated_at: datetime | None = None
+
+class AccessLogResponse(BaseModel):
+    id: int
+    access_credential_id: int
+    access_device_id: int
+    user_id: int
+    open_space_id: int
+    reservation_id: int | None = None
+    scanned_at: datetime
+    action: str
+    result: str
+
+class AccessStatsResponse(BaseModel):
+    user_id: int
+    total_logs: int
+    successful_logs: int
+    denied_logs: int
+    check_ins: int
+    check_outs: int
+
 class DashboardInviteResponse(BaseModel):
     id: int 
     email: str | None = None
