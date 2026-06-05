@@ -38,10 +38,13 @@ const theme = {
   colors: {
     text: {
       primary: "#733e0a",
+      secondary: "#9b9b9b",
     },
     button: {
       primary: "#fdc700",
     },
+    muted: "#bdbdc1",
+    border: "#f5f5f5",
   },
 } as const;
 

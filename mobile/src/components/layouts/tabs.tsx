@@ -233,10 +233,11 @@ export function ProtectedTabs() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create((t) => ({
   content: {
     flex: 1,
     overflow: "hidden",
+    backgroundColor: "white",
   },
 
   hiddenExpoTabList: {
@@ -254,16 +255,14 @@ const styles = StyleSheet.create({
 
   tabList: {
     alignItems: "center",
-    // backgroundColor: colors.background,
-    // borderTopColor: colors.border,
+    backgroundColor: "white",
+    borderTopColor: t.colors.border,
     borderTopWidth: 1,
-    bottom: 0,
     display: "flex",
     flexDirection: "row",
     gap: 60,
-    height: 82,
     justifyContent: "center",
-    position: "absolute",
+    minHeight: 82,
     width: "100%",
   },
-});
+}));

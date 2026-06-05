@@ -4,6 +4,9 @@ import {
   useDeskAvailability,
   useOpenSpaceDetails,
 } from "@/hooks/use-open-spaces";
+import { DEFAULT_OPEN_SPACE_IMAGE_URL } from "@/lib/open-space-images";
+import { OPEN_SPACE_HERO_GROUP } from "@/lib/transition-ids";
+import { SharedExpoImage } from "@ssobkowski/stack/expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import { useMemo } from "react";
 import {
@@ -76,9 +79,7 @@ function MetadataRow({ label, value }: { label: string; value: string | number |
   return (
     <View style={styles.metaRow}>
       <Text style={styles.metaLabel}>{label}</Text>
-      <Text style={styles.metaValue} selectable>
-        {value}
-      </Text>
+      <Text style={styles.metaValue}>{value}</Text>
     </View>
   );
 }
@@ -105,8 +106,9 @@ function AvailabilitySummary({ desks }: { desks: DeskAvailability[] }) {
 }
 
 export default function OpenSpaceDetails() {
-  const params = useLocalSearchParams<{ id?: string }>();
+  const params = useLocalSearchParams<{ id?: string | string[]; imageUrl?: string | string[] }>();
   const openSpaceId = parseOpenSpaceId(params.id);
+  const routeImageUrl = Array.isArray(params.imageUrl) ? params.imageUrl[0] : params.imageUrl;
   const openSpace = useOpenSpaceDetails(openSpaceId);
   const availabilityWindow = useMemo(
     () => getTodayAvailabilityWindow(openSpace.data),
@@ -117,6 +119,7 @@ export default function OpenSpaceDetails() {
     availabilityWindow.startTime,
     availabilityWindow.endTime,
   );
+  const heroImageUrl = openSpace.data?.image_url ?? routeImageUrl ?? DEFAULT_OPEN_SPACE_IMAGE_URL;
 
   if (openSpaceId === null) {
     return (
@@ -138,6 +141,13 @@ export default function OpenSpaceDetails() {
           <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
 
+        <SharedExpoImage
+          group={OPEN_SPACE_HERO_GROUP}
+          id={String(openSpaceId)}
+          source={heroImageUrl}
+          style={styles.hero}
+        />
+
         {openSpace.isPending ? (
           <View style={styles.centerState}>
             <ActivityIndicator color="#007AFF" />
@@ -145,9 +155,7 @@ export default function OpenSpaceDetails() {
           </View>
         ) : openSpace.isError ? (
           <View style={styles.centerState}>
-            <Text style={styles.error} selectable>
-              {openSpace.error.message}
-            </Text>
+            <Text style={styles.error}>{openSpace.error.message}</Text>
             <TouchableOpacity style={styles.secondaryButton} onPress={() => openSpace.refetch()}>
               <Text style={styles.secondaryButtonText}>Try Again</Text>
             </TouchableOpacity>
@@ -156,12 +164,8 @@ export default function OpenSpaceDetails() {
           <>
             <View style={styles.header}>
               <Text style={styles.eyebrow}>Open space #{openSpace.data.id}</Text>
-              <Text style={styles.title} selectable>
-                {openSpace.data.name}
-              </Text>
-              <Text style={styles.location} selectable>
-                {getLocation(openSpace.data)}
-              </Text>
+              <Text style={styles.title}>{openSpace.data.name}</Text>
+              <Text style={styles.location}>{getLocation(openSpace.data)}</Text>
             </View>
 
             <View style={styles.card}>
@@ -198,9 +202,7 @@ export default function OpenSpaceDetails() {
                 </View>
               ) : availability.isError ? (
                 <View style={styles.inlineState}>
-                  <Text style={styles.error} selectable>
-                    {availability.error.message}
-                  </Text>
+                  <Text style={styles.error}>{availability.error.message}</Text>
                 </View>
               ) : availability.data.length === 0 ? (
                 <Text style={styles.stateText}>No desks found for this open space.</Text>
@@ -211,10 +213,8 @@ export default function OpenSpaceDetails() {
                     {availability.data.map((desk) => (
                       <View key={desk.id} style={styles.deskRow}>
                         <View>
-                          <Text style={styles.deskTitle} selectable>
-                            {desk.data ?? `Desk #${desk.id}`}
-                          </Text>
-                          <Text style={styles.deskMeta} selectable>
+                          <Text style={styles.deskTitle}>{desk.data ?? `Desk #${desk.id}`}</Text>
+                          <Text style={styles.deskMeta}>
                             x {desk.x}, y {desk.y}, {desk.width} x {desk.height}
                           </Text>
                         </View>
@@ -259,6 +259,19 @@ const styles = StyleSheet.create({
     color: "#007AFF",
     fontSize: 15,
     fontWeight: "600",
+  },
+  hero: {
+    height: 264,
+    overflow: "hidden",
+    borderRadius: 24,
+    backgroundColor: "#E5E5EA",
+  },
+  heroImage: {
+    bottom: 0,
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
   },
   header: {
     gap: 8,

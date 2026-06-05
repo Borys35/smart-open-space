@@ -55,7 +55,8 @@
         "expo-build-properties",
         {
           "android": {
-            "usePrecompiledHeaders": true
+            "usePrecompiledHeaders": true,
+            "usesCleartextTraffic": true
           }
         }
       ],

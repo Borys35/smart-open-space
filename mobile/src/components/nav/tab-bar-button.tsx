@@ -9,7 +9,7 @@ import {
   FlatMapPinStroke,
 } from "@ssobkowski/rnui";
 import { View } from "react-native";
-import { StyleSheet } from "react-native-unistyles";
+import { StyleSheet, useUnistyles } from "react-native-unistyles";
 
 import type { TabTriggerSlotProps } from "expo-router/ui";
 
@@ -34,13 +34,14 @@ type TabBarButtonProps = TabTriggerSlotProps & {
 };
 
 export const TabBarButton = ({ isFocused, name, badge, ...props }: TabBarButtonProps) => {
+  const { theme } = useUnistyles();
   const showBadge = badge !== undefined && badge > 0;
 
   const IconComponent = isFocused ? ICONS[name].filled : ICONS[name].stroke;
   return (
     // @ts-expect-error Fuck you
     <Button {...props} variant="icon" hitSlop={14} config={{ scaleTo: 0.96 }}>
-      <IconComponent width={30} height={30} color={isFocused ? "black" : "#BDBDC1"} />
+      <IconComponent width={30} height={30} color={isFocused ? "black" : theme.colors.muted} />
 
       {showBadge && (
         <View

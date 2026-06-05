@@ -1,8 +1,6 @@
 import { useAuth } from "@/hooks/use-auth";
 import { useInvites, useRespondToInvite } from "@/hooks/use-invites";
-import { useOpenSpaces } from "@/hooks/use-open-spaces";
 import * as Notifications from "expo-notifications";
-import { router } from "expo-router";
 import { useEffect } from "react";
 import {
   ActivityIndicator,
@@ -34,7 +32,6 @@ function getOpenSpaceLocation(openSpace: MobileOpenSpaceSummary | null) {
 export default function Home() {
   const { user, logout } = useAuth();
   const invitations = useInvites(user?.id ?? null);
-  const openSpaces = useOpenSpaces(user?.id ?? null);
   const acceptInvite = useRespondToInvite(user?.id ?? null, "accept");
   const rejectInvite = useRespondToInvite(user?.id ?? null, "reject");
   const isResponding = acceptInvite.isPending || rejectInvite.isPending;
@@ -77,70 +74,6 @@ export default function Home() {
             Role: {user.role}
           </Text>
         </View>
-
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Your open spaces</Text>
-          {openSpaces.data ? <Text style={styles.counter}>{openSpaces.data.length}</Text> : null}
-        </View>
-
-        {openSpaces.isPending ? (
-          <View style={styles.inviteState}>
-            <ActivityIndicator color="#007AFF" />
-            <Text style={styles.stateText}>Loading open spaces...</Text>
-          </View>
-        ) : openSpaces.isError ? (
-          <View style={styles.inviteState}>
-            <Text style={styles.error} selectable>
-              {openSpaces.error.message}
-            </Text>
-            <TouchableOpacity style={styles.retryButton} onPress={() => openSpaces.refetch()}>
-              <Text style={styles.retryButtonText}>Try Again</Text>
-            </TouchableOpacity>
-          </View>
-        ) : openSpaces.data.length === 0 ? (
-          <View style={styles.inviteState}>
-            <Text style={styles.stateText}>You are not a member of any open spaces yet.</Text>
-          </View>
-        ) : (
-          openSpaces.data.map((openSpace) => {
-            const spaceLocation = getOpenSpaceLocation(openSpace);
-
-            return (
-              <TouchableOpacity
-                key={openSpace.id}
-                style={styles.inviteCard}
-                onPress={() =>
-                  router.push({
-                    pathname: "/spaces/[id]",
-                    params: { id: String(openSpace.id) },
-                  })
-                }
-              >
-                <Text style={styles.inviteTitle} selectable>
-                  {openSpace.name}
-                </Text>
-                {spaceLocation ? (
-                  <Text style={styles.inviteLocation} selectable>
-                    {spaceLocation}
-                  </Text>
-                ) : null}
-                <View style={styles.inviteMeta}>
-                  <Text style={styles.inviteDetail} selectable>
-                    Open space #{openSpace.id}
-                  </Text>
-                  {openSpace.opened_at || openSpace.closed_at ? (
-                    <Text style={styles.inviteDetail} selectable>
-                      {openSpace.opened_at ? `Opens ${openSpace.opened_at}` : "Opening time unset"}
-                      {" · "}
-                      {openSpace.closed_at ? `Closes ${openSpace.closed_at}` : "Closing time unset"}
-                    </Text>
-                  ) : null}
-                </View>
-                <Text style={styles.openSpaceAction}>Open space</Text>
-              </TouchableOpacity>
-            );
-          })
-        )}
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Pending invitations</Text>
@@ -344,17 +277,6 @@ const styles = StyleSheet.create({
   inviteDetail: {
     fontSize: 13,
     color: "#666",
-  },
-  openSpaceAction: {
-    alignSelf: "flex-start",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    overflow: "hidden",
-    backgroundColor: "#E7F0FF",
-    color: "#007AFF",
-    fontSize: 14,
-    fontWeight: "600",
   },
   actionError: {
     fontSize: 14,
