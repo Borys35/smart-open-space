@@ -384,10 +384,85 @@ class ReservationResponse(BaseModel):
     status: str
 
 class OpenSpaceSettingsUpdate(BaseModel):
+    name: str | None = None
+    building: str | None = None
+    floor: int | None = None
+    address: str | None = None
+    place_name: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    image_url: str | None = None
+    opened_at: datetime | None = None
+    closed_at: datetime | None = None
     credits_per_hour: int
     max_daily_hours: int
     period_credits: int
     credit_reset_period: str
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value) -> str | None:
+        if value is None:
+            return value
+
+        value = value.strip()
+
+        if not value:
+            raise ValueError("Name cannot be empty")
+
+        if len(value) > 100:
+            raise ValueError("Name must be at most 100 characters long")
+
+        return value
+
+    @field_validator("building")
+    @classmethod
+    def validate_building(cls, value) -> str | None:
+        if value is None:
+            return value
+
+        value = value.strip()
+
+        if not value:
+            raise ValueError("Building cannot be empty")
+
+        if len(value) > 50:
+            raise ValueError("Building must be at most 50 characters long")
+
+        return value
+
+    @field_validator("floor")
+    @classmethod
+    def validate_floor(cls, value) -> int | None:
+        if value is None:
+            return value
+
+        if value < 0:
+            raise ValueError("Floor cannot be negative")
+
+        return value
+
+    @field_validator("latitude")
+    @classmethod
+    def validate_latitude(cls, value) -> float | None:
+        if value is None:
+            return value
+
+        if value < -90 or value > 90:
+            raise ValueError("Latitude must be between -90 and 90")
+
+        return value
+
+    @field_validator("longitude")
+    @classmethod
+    def validate_longitude(cls, value) -> float | None:
+        if value is None:
+            return value
+
+        if value < -180 or value > 180:
+            raise ValueError("Longitude must be between -180 and 180")
+
+        return value
 
     @field_validator("credits_per_hour", "max_daily_hours")
     @classmethod
@@ -415,6 +490,17 @@ class OpenSpaceSettingsUpdate(BaseModel):
             raise ValueError("Credit reset period must be WEEKLY or MONTHLY")
         
         return value
+
+    @model_validator(mode="after")
+    def validate_open_space_data(self):
+        if (self.latitude is None) != (self.longitude is None):
+            raise ValueError("Latitude and longitude must be provided together")
+
+        if self.opened_at is not None and self.closed_at is not None:
+            if self.closed_at < self.opened_at:
+                raise ValueError("closed_at must be after opened_at")
+
+        return self
 
 class DeskAvailabilityResponse(BaseModel):
     id: int

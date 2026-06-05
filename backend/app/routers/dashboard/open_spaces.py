@@ -201,14 +201,48 @@ def update_open_space_settings(
 
         if not manager_assignment:
             raise HTTPException(status_code=403, detail="You can update settings only in your assigned open space")
-        
+
+    if data.name is not None:
+        open_space.name = data.name
+
+    if data.building is not None:
+        open_space.building = data.building
+
+    if data.floor is not None:
+        open_space.floor = data.floor
+
+    if data.address is not None:
+        open_space.address = data.address
+
+    if data.place_name is not None:
+        open_space.place_name = data.place_name
+
+    if data.latitude is not None:
+        open_space.latitude = data.latitude
+
+    if data.longitude is not None:
+        open_space.longitude = data.longitude
+
+    if data.image_url is not None:
+        open_space.image_url = data.image_url
+
+    if data.opened_at is not None:
+        open_space.opened_at = data.opened_at
+
+    if data.closed_at is not None:
+        open_space.closed_at = data.closed_at
+
     open_space.credits_per_hour = data.credits_per_hour
     open_space.max_daily_hours = data.max_daily_hours
     open_space.period_credits = data.period_credits
     open_space.credit_reset_period = data.credit_reset_period
-    
-    db.commit()
-    
+
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="A space with this name already exists in this building")
+
     return {"message": "Open space settings updated successfully"}
 
 @router.get("/{open_space_id}/invites", response_model=list[DashboardInviteResponse])
