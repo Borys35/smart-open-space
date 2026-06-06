@@ -33,8 +33,8 @@ const openSpaceSchema = z.object({
     image_url: z.string().trim().url("Image URL must be a valid URL").optional().or(z.literal("")),
     opened_at: z.string().trim().optional().or(z.literal("")),
     closed_at: z.string().trim().optional().or(z.literal("")),
-    credits_per_hour: z.coerce.number({ invalid_type_error: "Credits per hour must be a number" }),
-    max_daily_hours: z.coerce.number({ invalid_type_error: "Max daily hours must be a number" }),
+    credits_per_hour: z.coerce.number({ invalid_type_error: "Credits per hour must be a number" }).min(1, "Credits per hour must be greater than 0"),
+    max_daily_hours: z.coerce.number({ invalid_type_error: "Max daily hours must be a number" }).min(1, "Max daily hours must be greater than 0"),
     period_credits: z.coerce.number({ invalid_type_error: "Period credits must be a number" }),
     credit_reset_period: z.string().min(1, "Credit reset period is required").transform((value) => value.trim().toUpperCase()).refine((value) => ["WEEKLY", "MONTHLY"].includes(value), "Credit reset period must be WEEKLY or MONTHLY"),
 })
@@ -116,7 +116,7 @@ export function OpenSpaceSettingsForm({
 
             await reloadOpenSpaces()
         } catch (error: any) {
-            setServerError(error.message)
+            setServerError(error.detail[0].msg)
         }
     }
 
