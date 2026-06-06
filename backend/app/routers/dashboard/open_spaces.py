@@ -49,7 +49,11 @@ def get_open_spaces(
             "longitude": os.longitude,
             "image_url": os.image_url,
             "opened_at": os.opened_at,
-            "closed_at": os.closed_at
+            "closed_at": os.closed_at,
+            "credits_per_hour": os.credits_per_hour,
+            "max_daily_hours": os.max_daily_hours,
+            "period_credits": os.period_credits,
+            "credit_reset_period": os.credit_reset_period
         } for os in open_spaces
     ]
 

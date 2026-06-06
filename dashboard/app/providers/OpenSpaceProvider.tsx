@@ -6,6 +6,17 @@ export type OpenSpace = {
     name: string;
     building: string;
     floor: number;
+    address: string;
+    place_name: string;
+    longitude: number;
+    latitude: number;
+    image_url: string | null;
+    opened_at: string | null;
+    closed_at: string | null;
+    credits_per_hour: number;
+    max_daily_hours: number;
+    period_credits: number;
+    credit_reset_period: string;
 };
 
 type OpenSpaceContextType = {

@@ -171,6 +171,10 @@ class DashboardOpenSpaceResponse(BaseModel):
     image_url: str | None = None
     opened_at: datetime | None = None
     closed_at: datetime | None = None
+    credits_per_hour: int
+    max_daily_hours: int
+    period_credits: int
+    credit_reset_period: str
 
 class DeskLayoutItem(BaseModel):
     id: int | None = None

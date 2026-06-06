@@ -42,27 +42,13 @@ const openSpaceSchema = z.object({
 type OpenSpaceFormInput = z.input<typeof openSpaceSchema>
 type OpenSpaceFormValues = z.output<typeof openSpaceSchema>
 
-type OpenSpaceSettingsSource = {
-    id: number
-    name: string
-    building: string
-    floor: number
-    address?: string | null
-    place_name?: string | null
-    latitude?: number | null
-    longitude?: number | null
-    image_url?: string | null
-    opened_at?: string | null
-    closed_at?: string | null
-}
-
 export function OpenSpaceSettingsForm({
     className,
     ...props
 }: React.ComponentProps<"div">) {
     const [serverError, setServerError] = useState<string | null>(null)
     const { reloadOpenSpaces, activeOpenSpace } = useOpenSpace()
-    const currentOpenSpace = activeOpenSpace as OpenSpaceSettingsSource | null
+    const currentOpenSpace = activeOpenSpace
     const {
         register,
         handleSubmit,
@@ -105,10 +91,10 @@ export function OpenSpaceSettingsForm({
             image_url: currentOpenSpace.image_url ?? "",
             opened_at: currentOpenSpace.opened_at ? new Date(currentOpenSpace.opened_at).toISOString().slice(0, 16) : "",
             closed_at: currentOpenSpace.closed_at ? new Date(currentOpenSpace.closed_at).toISOString().slice(0, 16) : "",
-            credits_per_hour: 0,
-            max_daily_hours: 0,
-            period_credits: 0,
-            credit_reset_period: "WEEKLY",
+            credits_per_hour: currentOpenSpace.credits_per_hour ?? 0,
+            max_daily_hours: currentOpenSpace.max_daily_hours ?? 0,
+            period_credits: currentOpenSpace.period_credits ?? 0,
+            credit_reset_period: currentOpenSpace.credit_reset_period ?? "WEEKLY",
         })
     }, [currentOpenSpace, reset])
 
