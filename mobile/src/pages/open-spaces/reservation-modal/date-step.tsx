@@ -1,21 +1,32 @@
-import { useDeskAvailabilityWindows } from "@/hooks/use-open-spaces";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useDeskAvailabilityWindows, useDesksAvailabilityWindows } from "@/hooks/use-open-spaces";
+import {
+  clampReservationDate,
+  useReservationPreferencesStore,
+} from "@/stores/reservation-preferences";
 import { Button, ModalHeader, ModalStepView, Skeleton, Text } from "@ssobkowski/rnui";
 import { useEffect, useMemo, useState } from "react";
 import { View } from "react-native";
 import { FadeIn, FadeOut } from "react-native-reanimated";
 import { StyleSheet } from "react-native-unistyles";
 
-import type { DeskAvailabilityWindow } from "@/hooks/use-open-spaces";
+import type {
+  DeskAvailability,
+  DeskAvailabilityWindow,
+  DeskAvailabilityWindowsResult,
+} from "@/hooks/use-open-spaces";
 
 interface ReservationDateStepProps {
   deskId: number | null;
   deskLabel?: string | null;
+  desks?: Pick<DeskAvailability, "id" | "data">[];
   onNext: (selection: ReservationDateSelection) => void;
 }
 
 export interface ReservationDateSelection {
   date: string;
   windows: DeskAvailabilityWindow[];
+  deskWindows: DeskAvailabilityWindowsResult[];
 }
 
 function getStartOfDay(date: Date) {
@@ -30,12 +41,17 @@ function addDays(date: Date, days: number) {
   return nextDate;
 }
 
-function formatApiDate(date: Date) {
+export function formatApiDate(date: Date) {
   const year = date.getFullYear();
   const month = `${date.getMonth() + 1}`.padStart(2, "0");
   const day = `${date.getDate()}`.padStart(2, "0");
 
   return `${year}-${month}-${day}`;
+}
+
+function parseApiDate(date: string) {
+  const [year, month, day] = date.split("-").map(Number);
+  return new Date(year, month - 1, day);
 }
 
 const INTL_DTF = new Intl.DateTimeFormat("en", {
@@ -46,25 +62,58 @@ function formatDisplayDate(date: Date) {
   return INTL_DTF.format(date);
 }
 
-function useDebouncedValue<T>(value: T, delayMs: number) {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-
-  useEffect(() => {
-    const timeout = setTimeout(() => setDebouncedValue(value), delayMs);
-
-    return () => clearTimeout(timeout);
-  }, [delayMs, value]);
-
-  return debouncedValue;
-}
-
-export function ReservationDateStep({ deskId, deskLabel, onNext }: ReservationDateStepProps) {
-  const [selectedDate, setSelectedDate] = useState(() => new Date());
+export function ReservationDateStep({
+  deskId,
+  deskLabel,
+  desks = [],
+  onNext,
+}: ReservationDateStepProps) {
+  const storedDate = useReservationPreferencesStore((state) => state.selectedDate);
+  const setStoredDate = useReservationPreferencesStore((state) => state.setSelectedDate);
+  const [selectedDate, setSelectedDate] = useState(() =>
+    parseApiDate(clampReservationDate(storedDate)),
+  );
   const debouncedDate = useDebouncedValue(selectedDate, 350);
   const selectedApiDate = useMemo(() => formatApiDate(debouncedDate), [debouncedDate]);
+  const isAutoFinder = deskId === null && desks.length > 0;
   const availability = useDeskAvailabilityWindows(deskId, selectedApiDate, 10);
-  const windows = availability.data?.windows ?? [];
+  const desksAvailability = useDesksAvailabilityWindows(
+    isAutoFinder ? desks : [],
+    selectedApiDate,
+    10,
+  );
+  const deskWindows = useMemo<DeskAvailabilityWindowsResult[]>(() => {
+    if (isAutoFinder) {
+      return desksAvailability.reduce<DeskAvailabilityWindowsResult[]>((results, query) => {
+        if (query.data) results.push(query.data);
+
+        return results;
+      }, []);
+    }
+
+    return availability.data ? [{ ...availability.data, deskLabel: deskLabel ?? null }] : [];
+  }, [availability.data, deskLabel, desksAvailability, isAutoFinder]);
+  const windows = useMemo(() => {
+    const seenWindows = new Set<string>();
+
+    return deskWindows.flatMap((result) =>
+      result.windows.filter((window) => {
+        const key = `${window.start_time}-${window.end_time}`;
+
+        if (seenWindows.has(key)) return false;
+
+        seenWindows.add(key);
+        return true;
+      }),
+    );
+  }, [deskWindows]);
   const hasAvailableWindow = windows.length > 0;
+  const isPending = isAutoFinder
+    ? desksAvailability.some((query) => query.isPending)
+    : availability.isPending;
+  const error = isAutoFinder
+    ? desksAvailability.find((query) => query.isError)?.error
+    : availability.error;
   const isTodayOrEarlier = getStartOfDay(selectedDate) <= getStartOfDay(new Date());
 
   const handleDateChange = (days: number) => {
@@ -79,9 +128,15 @@ export function ReservationDateStep({ deskId, deskLabel, onNext }: ReservationDa
     });
   };
 
+  useEffect(() => {
+    setStoredDate(formatApiDate(selectedDate));
+  }, [selectedDate, setStoredDate]);
+
   return (
     <ModalStepView index={0} style={styles.modal}>
-      <ModalHeader text={deskLabel ? `Reserve ${deskLabel}` : "Reserve desk"} />
+      <ModalHeader
+        text={deskLabel ? `Reserve ${deskLabel}` : isAutoFinder ? "Find a desk" : "Reserve desk"}
+      />
 
       <View style={styles.dateStepper}>
         <Button
@@ -125,15 +180,17 @@ export function ReservationDateStep({ deskId, deskLabel, onNext }: ReservationDa
       </View>
 
       <View style={styles.availabilityState}>
-        {deskId === null ? (
+        {deskId === null && !isAutoFinder ? (
           <Text tone="text.secondary">Select a desk to check availability.</Text>
-        ) : availability.isPending ? (
+        ) : isPending ? (
           <Skeleton width={220} height={22} color="#E6E8EC" style={{ borderRadius: 999 }} />
-        ) : availability.isError ? (
-          <Text color="#EC6A5B">{availability.error.message}</Text>
+        ) : error ? (
+          <Text color="#EC6A5B">{error.message}</Text>
         ) : hasAvailableWindow ? (
           <Text color="#37C25C" weight="medium">
-            Available windows found for this date.
+            {isAutoFinder
+              ? `${deskWindows.filter((result) => result.windows.length > 0).length} desks have available windows.`
+              : "Available windows found for this date."}
           </Text>
         ) : (
           <Text color="#EC6A5B" weight="medium">
@@ -145,7 +202,7 @@ export function ReservationDateStep({ deskId, deskLabel, onNext }: ReservationDa
       <Button
         variant="primary"
         disabled={!hasAvailableWindow}
-        onPress={() => onNext({ date: selectedApiDate, windows })}
+        onPress={() => onNext({ date: selectedApiDate, windows, deskWindows })}
       >
         <Text color="white" size="lg" weight="medium">
           Next

@@ -1,5 +1,5 @@
 import { api } from "@/lib/api";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export interface MobileOpenSpaceSummary {
   id: number;
@@ -37,6 +37,25 @@ export interface DeskAvailabilityWindowsResponse {
   windows: DeskAvailabilityWindow[];
 }
 
+export interface DeskAvailabilityWindowsResult extends DeskAvailabilityWindowsResponse {
+  deskLabel?: string | null;
+}
+
+export interface ReservationCreate {
+  desk_id: number;
+  start_time: string;
+  end_time: string;
+}
+
+export interface ReservationResponse {
+  id: number;
+  desk_id: number;
+  start_time: string;
+  end_time: string;
+  credit_cost: number;
+  status: string;
+}
+
 export const openSpaceKeys = {
   list: (userId: number | null) => ["open-spaces", userId] as const,
   detail: (openSpaceId: number | null) => ["open-spaces", "detail", openSpaceId] as const,
@@ -44,6 +63,7 @@ export const openSpaceKeys = {
     ["open-spaces", "availability", openSpaceId, startTime, endTime] as const,
   deskAvailabilityWindows: (deskId: number | null, date: string, minDurationMinutes: number) =>
     ["desks", "availability-windows", deskId, date, minDurationMinutes] as const,
+  myReservations: () => ["reservations", "my"] as const,
 };
 
 export function useOpenSpaces(userId: number | null) {
@@ -91,5 +111,42 @@ export function useDeskAvailabilityWindows(
         `/api/desks/${deskId}/availability-windows?date=${date}&min_duration_minutes=${minDurationMinutes}`,
       ),
     enabled: deskId !== null && date.length > 0,
+  });
+}
+
+export function useDesksAvailabilityWindows(
+  desks: Pick<DeskAvailability, "id" | "data">[],
+  date: string,
+  minDurationMinutes = 10,
+) {
+  return useQueries({
+    queries: desks.map((desk) => ({
+      queryKey: openSpaceKeys.deskAvailabilityWindows(desk.id, date, minDurationMinutes),
+      queryFn: async () => {
+        const response = await api.get<DeskAvailabilityWindowsResponse>(
+          `/api/desks/${desk.id}/availability-windows?date=${date}&min_duration_minutes=${minDurationMinutes}`,
+        );
+
+        return {
+          ...response,
+          deskLabel: desk.data ?? null,
+        } satisfies DeskAvailabilityWindowsResult;
+      },
+      enabled: date.length > 0,
+    })),
+  });
+}
+
+export function useCreateReservation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: ReservationCreate) =>
+      api.post<ReservationResponse>("/api/reservations", data),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: openSpaceKeys.myReservations() });
+      await queryClient.invalidateQueries({ queryKey: ["desks", "availability-windows"] });
+      await queryClient.invalidateQueries({ queryKey: ["open-spaces", "availability"] });
+    },
   });
 }

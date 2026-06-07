@@ -8,42 +8,62 @@ import {
   getArcPath,
   getLongestWindow,
   getMarkerPosition,
+  getMinuteOfDay,
   getMinutesBetween,
   getProgressFromPoint,
   getTimeLabel,
   getWindowStartMinutes,
   snapMinuteOffset,
   snapProgress,
+  windowContainsRange,
   type Marker,
 } from "@/pages/open-spaces/reservation-modal/time-step-utils";
 import { WindowChips } from "@/pages/open-spaces/reservation-modal/window-chips";
+import { useReservationPreferencesStore } from "@/stores/reservation-preferences";
 import { Button, ModalHeader, ModalStepView, Text } from "@ssobkowski/rnui";
 import { useEffect, useState } from "react";
 import { Gesture } from "react-native-gesture-handler";
 import { useDerivedValue, useSharedValue } from "react-native-reanimated";
 import { StyleSheet } from "react-native-unistyles";
 
-import type { DeskAvailabilityWindow } from "@/hooks/use-open-spaces";
+import type {
+  DeskAvailabilityWindow,
+  DeskAvailabilityWindowsResult,
+} from "@/hooks/use-open-spaces";
 import type { LayoutChangeEvent } from "react-native";
 
 interface ReservationTimeStepProps {
   windows: DeskAvailabilityWindow[];
+  deskWindows: DeskAvailabilityWindowsResult[];
+  isConfirming?: boolean;
   onConfirm: (selection: ReservationTimeSelection) => void;
 }
 
 export interface ReservationTimeSelection {
+  deskId: number | null;
+  deskLabel?: string | null;
   startTime: string;
   endTime: string;
   durationMinutes: number;
 }
 
-export function ReservationTimeStep({ windows, onConfirm }: ReservationTimeStepProps) {
+export function ReservationTimeStep({
+  windows,
+  deskWindows,
+  isConfirming = false,
+  onConfirm,
+}: ReservationTimeStepProps) {
   const [selectedWindowIndex, setSelectedWindowIndex] = useState(0);
   const selectedWindow = windows[selectedWindowIndex] ?? getLongestWindow(windows);
   const [arcWidth, setArcWidth] = useState(0);
   const startProgress = useSharedValue(0);
   const endProgress = useSharedValue(1);
   const activeMarker = useSharedValue<Marker>("end");
+  const storedStartMinuteOfDay = useReservationPreferencesStore((state) => state.startMinuteOfDay);
+  const storedEndMinuteOfDay = useReservationPreferencesStore((state) => state.endMinuteOfDay);
+  const setStoredTimeWindow = useReservationPreferencesStore(
+    (state) => state.setSelectedTimeWindow,
+  );
 
   const selectedWindowDuration = selectedWindow
     ? getMinutesBetween(selectedWindow.start_time, selectedWindow.end_time)
@@ -78,9 +98,42 @@ export function ReservationTimeStep({ windows, onConfirm }: ReservationTimeStepP
   const endMarkerY = useDerivedValue(() => getMarkerPosition(endProgress.value, arcWidth).y);
 
   useEffect(() => {
-    startProgress.value = 0;
-    endProgress.value = 1;
-  }, [endProgress, selectedWindowIndex, startProgress]);
+    if (
+      selectedWindow === null ||
+      storedStartMinuteOfDay === null ||
+      storedEndMinuteOfDay === null ||
+      selectedWindowDuration <= 0
+    ) {
+      startProgress.value = 0;
+      endProgress.value = 1;
+      return;
+    }
+
+    const windowEndMinutes = windowStartMinutes + selectedWindowDuration;
+    const preferredStartOffset = storedStartMinuteOfDay - windowStartMinutes;
+    const preferredEndOffset = storedEndMinuteOfDay - windowStartMinutes;
+    const storedRangeFitsWindow =
+      storedStartMinuteOfDay >= windowStartMinutes &&
+      storedEndMinuteOfDay <= windowEndMinutes &&
+      storedEndMinuteOfDay - storedStartMinuteOfDay >= MIN_DURATION_MINUTES;
+
+    if (!storedRangeFitsWindow) {
+      startProgress.value = 0;
+      endProgress.value = 1;
+      return;
+    }
+
+    startProgress.value = preferredStartOffset / selectedWindowDuration;
+    endProgress.value = preferredEndOffset / selectedWindowDuration;
+  }, [
+    endProgress,
+    selectedWindow,
+    selectedWindowDuration,
+    startProgress,
+    storedEndMinuteOfDay,
+    storedStartMinuteOfDay,
+    windowStartMinutes,
+  ]);
 
   useEffect(() => {
     setSelectedWindowIndex(0);
@@ -135,8 +188,17 @@ export function ReservationTimeStep({ windows, onConfirm }: ReservationTimeStepP
     );
     const selectedStartTime = addMinutes(selectedWindow.start_time, selectedStartOffset);
     const selectedEndTime = addMinutes(selectedWindow.start_time, selectedEndOffset);
+    const matchingDesk = deskWindows.find((deskWindow) =>
+      deskWindow.windows.some((window) =>
+        windowContainsRange(window, selectedStartTime, selectedEndTime),
+      ),
+    );
+
+    setStoredTimeWindow(getMinuteOfDay(selectedStartTime), getMinuteOfDay(selectedEndTime));
 
     onConfirm({
+      deskId: matchingDesk?.desk_id ?? null,
+      deskLabel: matchingDesk?.deskLabel,
       startTime: selectedStartTime,
       endTime: selectedEndTime,
       durationMinutes: Math.max(0, selectedEndOffset - selectedStartOffset),
@@ -177,9 +239,9 @@ export function ReservationTimeStep({ windows, onConfirm }: ReservationTimeStepP
             onLayout={handleArcLayout}
           />
 
-          <Button variant="primary" onPress={handleConfirm}>
+          <Button variant="primary" disabled={isConfirming} onPress={handleConfirm}>
             <Text color="white" size="lg" weight="medium">
-              Confirm
+              {isConfirming ? "Reserving..." : "Confirm"}
             </Text>
           </Button>
         </>

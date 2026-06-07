@@ -2,6 +2,7 @@ import { BackButton } from "@/components/nav/back-button";
 import {
   type DeskAvailability,
   type MobileOpenSpaceSummary,
+  useCreateReservation,
   useDeskAvailability,
   useOpenSpaceDetails,
 } from "@/hooks/use-open-spaces";
@@ -11,10 +12,11 @@ import { Button, ClockIconStroke, MapPinStroke, Skeleton, Text } from "@ssobkows
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import { useMemo, useRef, useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { Alert, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useUnistyles } from "react-native-unistyles";
 
+import type { ReservationTimeSelection } from "@/pages/open-spaces/reservation-modal/time-step";
 import type { ModalRef } from "@ssobkowski/rnui";
 
 function parseOpenSpaceId(id: string | string[] | undefined) {
@@ -94,6 +96,7 @@ export default function OpenSpaceDetails() {
 
   const modalRef = useRef<ModalRef>(null);
   const [selectedDesk, setSelectedDesk] = useState<DeskAvailability | null>(null);
+  const createReservation = useCreateReservation();
 
   const params = useLocalSearchParams<{ id?: string | string[]; imageUrl?: string | string[] }>();
   const openSpaceId = parseOpenSpaceId(params.id);
@@ -109,6 +112,34 @@ export default function OpenSpaceDetails() {
     availabilityWindow.endTime,
   );
   const heroImageUrl = openSpace.data?.image_url ?? routeImageUrl ?? DEFAULT_OPEN_SPACE_IMAGE_URL;
+
+  const handleReservationConfirm = async (selection: ReservationTimeSelection) => {
+    const deskId = selection.deskId ?? selectedDesk?.id ?? null;
+
+    if (deskId === null) {
+      Alert.alert("No desk available", "Try a different time window.");
+      return;
+    }
+
+    try {
+      await createReservation.mutateAsync({
+        desk_id: deskId,
+        start_time: selection.startTime,
+        end_time: selection.endTime,
+      });
+
+      Alert.alert(
+        "Reservation confirmed",
+        selection.deskLabel ? `Desk: ${selection.deskLabel}` : "Your desk is reserved.",
+      );
+      router.push("/reservations");
+    } catch (error) {
+      Alert.alert(
+        "Could not reserve desk",
+        error instanceof Error ? error.message : "Please try again.",
+      );
+    }
+  };
 
   if (openSpaceId === null) {
     return (
@@ -202,11 +233,28 @@ export default function OpenSpaceDetails() {
           </View>
         </View>
       </ScrollView>
+      <View style={styles.finderFooter}>
+        <Button
+          variant="primary"
+          disabled={!availability.data || availability.data.length === 0}
+          style={styles.finderButton}
+          onPress={() => {
+            setSelectedDesk(null);
+            modalRef.current?.present();
+          }}
+        >
+          <Text color="white" size="lg" weight="medium">
+            Find a desk for me
+          </Text>
+        </Button>
+      </View>
       <ReservationModal
         ref={modalRef}
         deskId={selectedDesk?.id ?? null}
         deskLabel={selectedDesk?.data}
-        onConfirm={() => {}}
+        desks={selectedDesk === null ? availability.data : undefined}
+        isConfirming={createReservation.isPending}
+        onConfirm={handleReservationConfirm}
       />
     </>
   );
@@ -229,6 +277,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 24,
+    paddingBottom: 104,
     gap: 24,
   },
   header: {
@@ -279,5 +328,18 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 8,
+  },
+  finderFooter: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    padding: 16,
+    paddingBottom: 28,
+    backgroundColor: "rgba(255, 255, 255, 0.94)",
+  },
+  finderButton: {
+    minHeight: 54,
+    marginBottom: 12,
   },
 });

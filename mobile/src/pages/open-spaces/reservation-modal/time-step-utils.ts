@@ -137,6 +137,24 @@ export function getWindowStartMinutes(window: DeskAvailabilityWindow | null) {
   return date.getHours() * 60 + date.getMinutes();
 }
 
+export function getMinuteOfDay(value: string) {
+  const date = new Date(value);
+  return date.getHours() * 60 + date.getMinutes();
+}
+
+export function windowContainsRange(
+  window: DeskAvailabilityWindow,
+  startTime: string,
+  endTime: string,
+) {
+  const windowStartMs = new Date(window.start_time).getTime();
+  const windowEndMs = new Date(window.end_time).getTime();
+  const startMs = new Date(startTime).getTime();
+  const endMs = new Date(endTime).getTime();
+
+  return windowStartMs <= startMs && windowEndMs >= endMs;
+}
+
 export function getLongestWindow(windows: DeskAvailabilityWindow[]) {
   return windows.reduce<DeskAvailabilityWindow | null>((longest, window) => {
     if (longest === null || window.duration_minutes > longest.duration_minutes) return window;

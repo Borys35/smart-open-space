@@ -9,6 +9,7 @@ import {
 import { Modal, useModal } from "@ssobkowski/rnui";
 import { useState } from "react";
 
+import type { DeskAvailability } from "@/hooks/use-open-spaces";
 import type { ModalRef } from "@ssobkowski/rnui";
 import type { Ref } from "react";
 
@@ -16,10 +17,19 @@ interface ReservationModalProps {
   ref?: Ref<ModalRef>;
   deskId: number | null;
   deskLabel?: string | null;
+  desks?: Pick<DeskAvailability, "id" | "data">[];
+  isConfirming?: boolean;
   onConfirm: (selection: ReservationTimeSelection) => void;
 }
 
-export function ReservationModal({ ref, deskId, deskLabel, onConfirm }: ReservationModalProps) {
+export function ReservationModal({
+  ref,
+  deskId,
+  deskLabel,
+  desks,
+  isConfirming,
+  onConfirm,
+}: ReservationModalProps) {
   const m = useModal();
   const [dateSelection, setDateSelection] = useState<ReservationDateSelection | null>(null);
 
@@ -29,12 +39,18 @@ export function ReservationModal({ ref, deskId, deskLabel, onConfirm }: Reservat
       <ReservationDateStep
         deskId={deskId}
         deskLabel={deskLabel}
+        desks={desks}
         onNext={(selection) => {
           setDateSelection(selection);
           m.goToStep(1);
         }}
       />
-      <ReservationTimeStep windows={dateSelection?.windows ?? []} onConfirm={onConfirm} />
+      <ReservationTimeStep
+        windows={dateSelection?.windows ?? []}
+        deskWindows={dateSelection?.deskWindows ?? []}
+        isConfirming={isConfirming}
+        onConfirm={onConfirm}
+      />
     </Modal>
   );
 }
