@@ -50,7 +50,7 @@ const styles = StyleSheet.create((theme) => ({
   rangeText: {
     minHeight: 34,
     color: "black",
-    fontSize: 24,
+    fontSize: 30,
     fontFamily: theme.typography.text.medium,
     fontWeight: "500",
     textAlign: "center",
@@ -59,7 +59,7 @@ const styles = StyleSheet.create((theme) => ({
   durationText: {
     minHeight: 22,
     color: "#6F737A",
-    fontSize: 16,
+    fontSize: 20,
     fontFamily: theme.typography.text.medium,
     textAlign: "center",
     fontVariant: ["tabular-nums"],

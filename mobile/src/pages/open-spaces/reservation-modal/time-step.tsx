@@ -1,27 +1,29 @@
 import { SelectedTimeSummary } from "@/pages/open-spaces/reservation-modal/selected-time-summary";
 import { TimeRangeArc } from "@/pages/open-spaces/reservation-modal/time-range-arc";
 import {
-  MIN_DURATION_MINUTES,
   addMinutes,
-  clamp,
   formatDuration,
   getArcPath,
-  getLongestWindow,
+  getAvailabilityMinuteRanges,
+  getEndSelectionForTargetOffset,
   getMarkerPosition,
   getMinuteOfDay,
   getMinutesBetween,
+  getPreferredRange,
   getProgressFromPoint,
+  getStartSelectionForTargetOffset,
+  getTimelineEnd,
+  getTimelineStart,
   getTimeLabel,
-  getWindowStartMinutes,
-  snapMinuteOffset,
+  getUnavailableMinuteRanges,
+  snapOffsetToResolution,
   snapProgress,
   windowContainsRange,
   type Marker,
 } from "@/pages/open-spaces/reservation-modal/time-step-utils";
-import { WindowChips } from "@/pages/open-spaces/reservation-modal/window-chips";
 import { useReservationPreferencesStore } from "@/stores/reservation-preferences";
 import { Button, ModalHeader, ModalStepView, Text } from "@ssobkowski/rnui";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Gesture } from "react-native-gesture-handler";
 import { useDerivedValue, useSharedValue } from "react-native-reanimated";
 import { StyleSheet } from "react-native-unistyles";
@@ -53,8 +55,6 @@ export function ReservationTimeStep({
   isConfirming = false,
   onConfirm,
 }: ReservationTimeStepProps) {
-  const [selectedWindowIndex, setSelectedWindowIndex] = useState(0);
-  const selectedWindow = windows[selectedWindowIndex] ?? getLongestWindow(windows);
   const [arcWidth, setArcWidth] = useState(0);
   const startProgress = useSharedValue(0);
   const endProgress = useSharedValue(1);
@@ -65,24 +65,46 @@ export function ReservationTimeStep({
     (state) => state.setSelectedTimeWindow,
   );
 
-  const selectedWindowDuration = selectedWindow
-    ? getMinutesBetween(selectedWindow.start_time, selectedWindow.end_time)
-    : 0;
-  const windowStartMinutes = getWindowStartMinutes(selectedWindow);
-  const minProgressGap =
-    selectedWindowDuration > 0 ? Math.min(1, MIN_DURATION_MINUTES / selectedWindowDuration) : 1;
+  const timelineStartWindow = useMemo(() => getTimelineStart(windows), [windows]);
+  const timelineEndWindow = useMemo(() => getTimelineEnd(windows), [windows]);
+  const timelineStartTime = timelineStartWindow?.start_time ?? null;
+  const timelineEndTime = timelineEndWindow?.end_time ?? null;
+  const timelineDuration =
+    timelineStartTime && timelineEndTime
+      ? getMinutesBetween(timelineStartTime, timelineEndTime)
+      : 0;
+  const timelineStartMinutes = timelineStartTime ? getMinuteOfDay(timelineStartTime) : 0;
+  const availabilityRanges = useMemo(
+    () => (timelineStartTime ? getAvailabilityMinuteRanges(windows, timelineStartTime) : []),
+    [timelineStartTime, windows],
+  );
+  const unavailableRanges = useMemo(
+    () => getUnavailableMinuteRanges(availabilityRanges, timelineDuration),
+    [availabilityRanges, timelineDuration],
+  );
+  const unavailablePaths = useMemo(
+    () =>
+      unavailableRanges.map((range) =>
+        getArcPath(
+          arcWidth,
+          timelineDuration > 0 ? range.startOffset / timelineDuration : 0,
+          timelineDuration > 0 ? range.endOffset / timelineDuration : 0,
+        ),
+      ),
+    [arcWidth, timelineDuration, unavailableRanges],
+  );
 
   const startOffset = useDerivedValue(() =>
-    snapMinuteOffset(startProgress.value * selectedWindowDuration, selectedWindowDuration),
+    snapOffsetToResolution(startProgress.value * timelineDuration, timelineDuration),
   );
   const endOffset = useDerivedValue(() =>
-    snapMinuteOffset(endProgress.value * selectedWindowDuration, selectedWindowDuration),
+    snapOffsetToResolution(endProgress.value * timelineDuration, timelineDuration),
   );
   const durationMinutes = useDerivedValue(() => Math.max(0, endOffset.value - startOffset.value));
   const selectedRangeLabel = useDerivedValue(
     () =>
-      `${getTimeLabel(windowStartMinutes, startOffset.value)} - ${getTimeLabel(
-        windowStartMinutes,
+      `${getTimeLabel(timelineStartMinutes, startOffset.value)} - ${getTimeLabel(
+        timelineStartMinutes,
         endOffset.value,
       )}`,
   );
@@ -98,46 +120,30 @@ export function ReservationTimeStep({
   const endMarkerY = useDerivedValue(() => getMarkerPosition(endProgress.value, arcWidth).y);
 
   useEffect(() => {
-    if (
-      selectedWindow === null ||
-      storedStartMinuteOfDay === null ||
-      storedEndMinuteOfDay === null ||
-      selectedWindowDuration <= 0
-    ) {
+    const preferredRange = getPreferredRange(
+      availabilityRanges,
+      storedStartMinuteOfDay,
+      storedEndMinuteOfDay,
+      timelineStartMinutes,
+    );
+
+    if (preferredRange === null || timelineDuration <= 0) {
       startProgress.value = 0;
       endProgress.value = 1;
       return;
     }
 
-    const windowEndMinutes = windowStartMinutes + selectedWindowDuration;
-    const preferredStartOffset = storedStartMinuteOfDay - windowStartMinutes;
-    const preferredEndOffset = storedEndMinuteOfDay - windowStartMinutes;
-    const storedRangeFitsWindow =
-      storedStartMinuteOfDay >= windowStartMinutes &&
-      storedEndMinuteOfDay <= windowEndMinutes &&
-      storedEndMinuteOfDay - storedStartMinuteOfDay >= MIN_DURATION_MINUTES;
-
-    if (!storedRangeFitsWindow) {
-      startProgress.value = 0;
-      endProgress.value = 1;
-      return;
-    }
-
-    startProgress.value = preferredStartOffset / selectedWindowDuration;
-    endProgress.value = preferredEndOffset / selectedWindowDuration;
+    startProgress.value = preferredRange.startOffset / timelineDuration;
+    endProgress.value = preferredRange.endOffset / timelineDuration;
   }, [
+    availabilityRanges,
     endProgress,
-    selectedWindow,
-    selectedWindowDuration,
     startProgress,
     storedEndMinuteOfDay,
     storedStartMinuteOfDay,
-    windowStartMinutes,
+    timelineDuration,
+    timelineStartMinutes,
   ]);
-
-  useEffect(() => {
-    setSelectedWindowIndex(0);
-  }, [windows]);
 
   const handleArcLayout = (event: LayoutChangeEvent) => {
     setArcWidth(event.nativeEvent.layout.width);
@@ -160,34 +166,51 @@ export function ReservationTimeStep({
     })
     .onUpdate((event) => {
       "worklet";
-      if (arcWidth <= 0) return;
+      if (arcWidth <= 0 || timelineDuration <= 0) return;
 
-      const nextProgress = snapProgress(
-        getProgressFromPoint(event.x, event.y, arcWidth),
-        selectedWindowDuration,
-      );
+      const targetOffset =
+        snapProgress(getProgressFromPoint(event.x, event.y, arcWidth), timelineDuration) *
+        timelineDuration;
 
       if (activeMarker.value === "start") {
-        startProgress.value = clamp(nextProgress, 0, endProgress.value - minProgressGap);
+        const snappedSelection = getStartSelectionForTargetOffset(
+          targetOffset,
+          endOffset.value,
+          availabilityRanges,
+        );
+
+        if (snappedSelection !== null) {
+          startProgress.value = snappedSelection.startOffset / timelineDuration;
+          endProgress.value = snappedSelection.endOffset / timelineDuration;
+        }
         return;
       }
 
-      endProgress.value = clamp(nextProgress, startProgress.value + minProgressGap, 1);
+      const snappedSelection = getEndSelectionForTargetOffset(
+        targetOffset,
+        startOffset.value,
+        availabilityRanges,
+      );
+
+      if (snappedSelection !== null) {
+        startProgress.value = snappedSelection.startOffset / timelineDuration;
+        endProgress.value = snappedSelection.endOffset / timelineDuration;
+      }
     });
 
   const handleConfirm = () => {
-    if (selectedWindow === null) return;
+    if (timelineStartTime === null) return;
 
-    const selectedStartOffset = snapMinuteOffset(
-      startProgress.value * selectedWindowDuration,
-      selectedWindowDuration,
+    const selectedStartOffset = snapOffsetToResolution(
+      startProgress.value * timelineDuration,
+      timelineDuration,
     );
-    const selectedEndOffset = snapMinuteOffset(
-      endProgress.value * selectedWindowDuration,
-      selectedWindowDuration,
+    const selectedEndOffset = snapOffsetToResolution(
+      endProgress.value * timelineDuration,
+      timelineDuration,
     );
-    const selectedStartTime = addMinutes(selectedWindow.start_time, selectedStartOffset);
-    const selectedEndTime = addMinutes(selectedWindow.start_time, selectedEndOffset);
+    const selectedStartTime = addMinutes(timelineStartTime, selectedStartOffset);
+    const selectedEndTime = addMinutes(timelineStartTime, selectedEndOffset);
     const matchingDesk = deskWindows.find((deskWindow) =>
       deskWindow.windows.some((window) =>
         windowContainsRange(window, selectedStartTime, selectedEndTime),
@@ -209,29 +232,25 @@ export function ReservationTimeStep({
     <ModalStepView index={1} style={styles.modal}>
       <ModalHeader text="Choose time" />
 
-      {selectedWindow === null ? (
+      {timelineStartTime === null || timelineEndTime === null ? (
         <Text color="#EC6A5B" weight="medium">
           No available windows for this date.
         </Text>
       ) : (
         <>
-          <WindowChips
-            windows={windows}
-            selectedWindowIndex={selectedWindowIndex}
-            onSelectWindow={setSelectedWindowIndex}
-          />
-
           <SelectedTimeSummary
             selectedRangeLabel={selectedRangeLabel}
             durationLabel={durationLabel}
           />
 
           <TimeRangeArc
-            selectedWindow={selectedWindow}
+            timelineStartTime={timelineStartTime}
+            timelineEndTime={timelineEndTime}
             arcWidth={arcWidth}
             gesture={panGesture}
             trackPath={trackPath}
             selectedPath={selectedPath}
+            unavailablePaths={unavailablePaths}
             startMarkerX={startMarkerX}
             startMarkerY={startMarkerY}
             endMarkerX={endMarkerX}
