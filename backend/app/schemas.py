@@ -445,6 +445,11 @@ class ReservationTimeUpdate(BaseModel):
     start_time: datetime
     end_time: datetime
 
+class ReservationQuoteRequest(BaseModel):
+    desk_id: int
+    start_time: datetime
+    end_time: datetime
+
 class ReservationResponse(BaseModel):
     id: int
     desk_id: int
@@ -580,6 +585,43 @@ class DeskAvailabilityResponse(BaseModel):
     width: float
     height: float
     available: bool
+
+class DeskAvailabilityWindow(BaseModel):
+    start_time: datetime
+    end_time: datetime
+    duration_minutes: int
+
+class DeskAvailabilitySummaryItem(BaseModel):
+    id: int
+    label: str | None = None
+    x: float
+    y: float
+    width: float
+    height: float
+    status: str
+    has_available_window: bool
+    next_available_window: DeskAvailabilityWindow | None = None
+
+class OpenSpaceDeskAvailabilitySummaryResponse(BaseModel):
+    open_space_id: int
+    date: str
+    min_duration_minutes: int
+    desks: list[DeskAvailabilitySummaryItem]
+
+class DeskAvailabilityWindowsResponse(BaseModel):
+    desk_id: int
+    date: str
+    windows: list[DeskAvailabilityWindow]
+
+class ReservationQuoteResponse(BaseModel):
+    desk_id: int
+    start_time: datetime
+    end_time: datetime
+    duration_minutes: int
+    credit_cost: int
+    credits_balance: int
+    can_reserve: bool
+    reason: str | None = None
 
 class DashboardNextReservationResponse(BaseModel):
     id: int

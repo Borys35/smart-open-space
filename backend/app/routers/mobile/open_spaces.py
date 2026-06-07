@@ -1,10 +1,17 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
 from app.dependencies import get_db, get_current_user
-from app.models import User, OpenSpace, Membership, Invitation
-from app.schemas import MobileOpenSpaceSummary, MobileOpenSpaceCreditsResponse
+from app.models import User, OpenSpace, Membership, Invitation, Desk
+from app.routers.mobile.reservations import get_desk_available_windows, get_open_space_day_range, validate_min_duration
+from app.schemas import (
+    MobileOpenSpaceSummary,
+    MobileOpenSpaceCreditsResponse,
+    OpenSpaceDeskAvailabilitySummaryResponse
+)
 
 router = APIRouter(prefix="/api/open-spaces", tags=["mobile-open-spaces"])
 
@@ -68,6 +75,62 @@ def get_my_open_space_credits(
     return {
         "open_space_id": open_space_id,
         "credits_balance": membership.credits_balance
+    }
+
+@router.get("/{open_space_id}/desks/availability-summary", response_model=OpenSpaceDeskAvailabilitySummaryResponse)
+def get_open_space_desks_availability_summary(
+    open_space_id: int,
+    date: date,
+    min_duration_minutes: int = 10,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    validate_min_duration(min_duration_minutes)
+
+    open_space = db.query(OpenSpace).filter(OpenSpace.id == open_space_id).first()
+
+    if not open_space:
+        raise HTTPException(status_code=404, detail="Open space not found")
+
+    if not open_space.is_active:
+        raise HTTPException(status_code=400, detail="Open space is inactive")
+
+    membership = db.query(Membership).filter(
+        Membership.open_space_id == open_space_id,
+        Membership.user_id == current_user.id,
+        Membership.status == "ACTIVE"
+    ).first()
+
+    if not membership:
+        raise HTTPException(status_code=403, detail="You are not a member of this open space")
+
+    desks = db.query(Desk).filter(Desk.open_space_id == open_space_id).all()
+    day_start, day_end = get_open_space_day_range(open_space, date)
+    result = []
+
+    for desk in desks:
+        windows = []
+
+        if desk.status == "AVAILABLE":
+            windows = get_desk_available_windows(db, desk.id, day_start, day_end, min_duration_minutes)
+
+        result.append({
+            "id": desk.id,
+            "label": desk.label,
+            "x": desk.x,
+            "y": desk.y,
+            "width": desk.width,
+            "height": desk.height,
+            "status": desk.status,
+            "has_available_window": len(windows) > 0,
+            "next_available_window": windows[0] if windows else None
+        })
+
+    return {
+        "open_space_id": open_space_id,
+        "date": date.isoformat(),
+        "min_duration_minutes": min_duration_minutes,
+        "desks": result
     }
 
 @router.get("/{open_space_id}", response_model=MobileOpenSpaceSummary)

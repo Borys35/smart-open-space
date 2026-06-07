@@ -1,14 +1,23 @@
 from math import ceil
-from datetime import datetime
+from datetime import date, datetime, time, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session 
 
 from app.dependencies import get_db, get_current_user
 from app.models import User, Desk, OpenSpace, Membership, Reservation, CreditTransaction
-from app.schemas import ReservationCreate, ReservationTimeUpdate, ReservationResponse, DeskAvailabilityResponse
+from app.schemas import (
+    ReservationCreate,
+    ReservationQuoteRequest,
+    ReservationQuoteResponse,
+    ReservationTimeUpdate,
+    ReservationResponse,
+    DeskAvailabilityResponse,
+    DeskAvailabilityWindowsResponse
+)
 
 router = APIRouter(prefix="/api/reservations", tags=["mobile-reservations"])
+desks_router = APIRouter(prefix="/api/desks", tags=["mobile-desks"])
 
 def serialize_reservation(reservation: Reservation):
     return {
@@ -19,6 +28,84 @@ def serialize_reservation(reservation: Reservation):
         "credit_cost": reservation.credit_cost,
         "status": reservation.status
     }
+
+def get_open_space_day_range(open_space: OpenSpace, selected_date: date):
+    day_start = datetime.combine(selected_date, time.min)
+    day_end = day_start + timedelta(days=1)
+
+    if open_space.opened_at is not None:
+        day_start = datetime.combine(selected_date, open_space.opened_at.time())
+
+    if open_space.closed_at is not None:
+        day_end = datetime.combine(selected_date, open_space.closed_at.time())
+
+        if day_end <= day_start:
+            day_end += timedelta(days=1)
+
+    return day_start, day_end
+
+def serialize_window(start_time: datetime, end_time: datetime):
+    duration_minutes = int((end_time - start_time).total_seconds() / 60)
+
+    return {
+        "start_time": start_time,
+        "end_time": end_time,
+        "duration_minutes": duration_minutes
+    }
+
+def get_desk_available_windows(
+    db: Session,
+    desk_id: int,
+    day_start: datetime,
+    day_end: datetime,
+    min_duration_minutes: int
+):
+    reservations = db.query(Reservation).filter(
+        Reservation.desk_id == desk_id,
+        Reservation.status.notin_(["CANCELLED", "DONE"]),
+        Reservation.end_time > day_start,
+        Reservation.start_time < day_end
+    ).order_by(Reservation.start_time.asc()).all()
+
+    windows = []
+    cursor = day_start
+
+    for reservation in reservations:
+        window_start = cursor
+        window_end = min(reservation.start_time, day_end)
+
+        if window_end > window_start:
+            duration_minutes = int((window_end - window_start).total_seconds() / 60)
+
+            if duration_minutes >= min_duration_minutes:
+                windows.append(serialize_window(window_start, window_end))
+
+        if reservation.end_time > cursor:
+            cursor = max(reservation.end_time, day_start)
+
+        if cursor >= day_end:
+            break
+
+    if cursor < day_end:
+        duration_minutes = int((day_end - cursor).total_seconds() / 60)
+
+        if duration_minutes >= min_duration_minutes:
+            windows.append(serialize_window(cursor, day_end))
+
+    return windows
+
+def validate_min_duration(min_duration_minutes: int):
+    if min_duration_minutes < 1:
+        raise HTTPException(status_code=400, detail="min_duration_minutes must be greater than 0")
+
+    return min_duration_minutes
+
+def get_active_membership(db: Session, user_id: int, open_space_id: int):
+    return db.query(Membership).filter(
+        Membership.user_id == user_id,
+        Membership.open_space_id == open_space_id,
+        Membership.status == "ACTIVE"
+    ).first()
 
 @router.post("", response_model=ReservationResponse, status_code=201)
 def create_reservation(
@@ -122,6 +209,86 @@ def get_my_reservations(
                     ).all()
     
     return [serialize_reservation(reservation) for reservation in reservations]
+
+@router.post("/quote", response_model=ReservationQuoteResponse)
+def quote_reservation(
+    data: ReservationQuoteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    desk = db.query(Desk).filter(Desk.id == data.desk_id).first()
+
+    if not desk:
+        raise HTTPException(status_code=404, detail="Desk not found")
+
+    open_space = db.query(OpenSpace).filter(OpenSpace.id == desk.open_space_id).first()
+
+    if not open_space:
+        raise HTTPException(status_code=404, detail="Open space not found")
+
+    if not open_space.is_active:
+        raise HTTPException(status_code=400, detail="Open space is inactive")
+
+    membership = get_active_membership(db, current_user.id, desk.open_space_id)
+
+    if not membership:
+        raise HTTPException(status_code=403, detail="You are not a member of this open space")
+
+    duration = data.end_time - data.start_time
+    duration_minutes = max(0, int(duration.total_seconds() / 60))
+    credit_cost = 0
+    can_reserve = True
+    reason = None
+
+    if data.end_time <= data.start_time:
+        can_reserve = False
+        reason = "End time must be after start time"
+    else:
+        duration_hours = duration.total_seconds() / 3600
+        credit_cost = ceil(duration_hours * open_space.credits_per_hour)
+
+        if desk.status != "AVAILABLE":
+            can_reserve = False
+            reason = "Desk is not available"
+        elif duration_hours > open_space.max_daily_hours:
+            can_reserve = False
+            reason = "Reservation exceeds max daily hours"
+        elif membership.credits_balance < credit_cost:
+            can_reserve = False
+            reason = "Not enough credits"
+        else:
+            conflict_reservation = db.query(Reservation).filter(
+                Reservation.desk_id == data.desk_id,
+                Reservation.status.notin_(["CANCELLED", "DONE"]),
+                data.end_time > Reservation.start_time,
+                data.start_time < Reservation.end_time
+            ).first()
+
+            if conflict_reservation:
+                can_reserve = False
+                reason = "Desk is already reserved in this range"
+
+            user_conflict_reservation = db.query(Reservation).filter(
+                Reservation.user_id == current_user.id,
+                Reservation.status.notin_(["CANCELLED", "DONE"]),
+                data.end_time > Reservation.start_time,
+                data.start_time < Reservation.end_time
+            ).first()
+
+            if user_conflict_reservation:
+                can_reserve = False
+                reason = "You already have a reservation in this range"
+
+    return {
+        "desk_id": data.desk_id,
+        "start_time": data.start_time,
+        "end_time": data.end_time,
+        "duration_minutes": duration_minutes,
+        "credit_cost": credit_cost,
+        "credits_balance": membership.credits_balance,
+        "can_reserve": can_reserve,
+        "reason": reason
+    }
 
 @router.delete("/{reservation_id}", status_code=200)
 def cancel_reservation(
@@ -348,3 +515,43 @@ def get_reservation(
         raise HTTPException(status_code=403, detail="This is not your reservation")
 
     return serialize_reservation(reservation)
+
+@desks_router.get("/{desk_id}/availability-windows", response_model=DeskAvailabilityWindowsResponse)
+def get_desk_availability_windows(
+    desk_id: int,
+    date: date,
+    min_duration_minutes: int = 10,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    validate_min_duration(min_duration_minutes)
+
+    desk = db.query(Desk).filter(Desk.id == desk_id).first()
+
+    if not desk:
+        raise HTTPException(status_code=404, detail="Desk not found")
+
+    open_space = db.query(OpenSpace).filter(OpenSpace.id == desk.open_space_id).first()
+
+    if not open_space:
+        raise HTTPException(status_code=404, detail="Open space not found")
+
+    if not open_space.is_active:
+        raise HTTPException(status_code=400, detail="Open space is inactive")
+
+    membership = get_active_membership(db, current_user.id, desk.open_space_id)
+
+    if not membership:
+        raise HTTPException(status_code=403, detail="You are not a member of this open space")
+
+    day_start, day_end = get_open_space_day_range(open_space, date)
+    windows = []
+
+    if desk.status == "AVAILABLE":
+        windows = get_desk_available_windows(db, desk_id, day_start, day_end, min_duration_minutes)
+
+    return {
+        "desk_id": desk_id,
+        "date": date.isoformat(),
+        "windows": windows
+    }
