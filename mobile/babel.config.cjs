@@ -10,6 +10,7 @@ module.exports = function (api) {
           autoProcessPaths: ["@ssobkowski/rnui/src"],
         },
       ],
+      "react-native-worklets/plugin",
     ],
   };
 };

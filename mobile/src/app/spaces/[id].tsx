@@ -1,3 +1,4 @@
+import { BackButton } from "@/components/nav/back-button";
 import {
   type DeskAvailability,
   type MobileOpenSpaceSummary,
@@ -5,24 +6,20 @@ import {
   useOpenSpaceDetails,
 } from "@/hooks/use-open-spaces";
 import { DEFAULT_OPEN_SPACE_IMAGE_URL } from "@/lib/open-space-images";
-import { OPEN_SPACE_HERO_GROUP } from "@/lib/transition-ids";
-import { SharedExpoImage } from "@ssobkowski/stack/expo-image";
+import { ReservationModal } from "@/pages/open-spaces/reservation-modal";
+import { Button, ClockIconStroke, MapPinStroke, Skeleton, Text } from "@ssobkowski/rnui";
+import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
-import { useMemo } from "react";
-import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { useMemo, useRef, useState } from "react";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useUnistyles } from "react-native-unistyles";
+
+import type { ModalRef } from "@ssobkowski/rnui";
 
 function parseOpenSpaceId(id: string | string[] | undefined) {
   const rawId = Array.isArray(id) ? id[0] : id;
   const numericId = Number(rawId);
-
   return Number.isInteger(numericId) && numericId > 0 ? numericId : null;
 }
 
@@ -46,15 +43,9 @@ function getTodayAvailabilityWindow(openSpace?: MobileOpenSpaceSummary) {
     0,
   );
 
-  if (end <= start) {
-    end.setDate(end.getDate() + 1);
-  }
+  if (end <= start) end.setDate(end.getDate() + 1);
 
   return {
-    label: `${start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} - ${end.toLocaleTimeString(
-      [],
-      { hour: "2-digit", minute: "2-digit" },
-    )}`,
     startTime: start.toISOString(),
     endTime: end.toISOString(),
   };
@@ -68,44 +59,42 @@ function getLocation(openSpace: MobileOpenSpaceSummary) {
     `Floor ${openSpace.floor}`,
   ]
     .filter(Boolean)
-    .join(" • ");
+    .join(" ∙ ");
 }
 
-function MetadataRow({ label, value }: { label: string; value: string | number | null }) {
-  if (value === null || value === "") {
-    return null;
-  }
-
+function DeskCardSkeleton() {
   return (
-    <View style={styles.metaRow}>
-      <Text style={styles.metaLabel}>{label}</Text>
-      <Text style={styles.metaValue}>{value}</Text>
+    <View style={styles.deskRow}>
+      <Skeleton width={52} height={26} color="#E6E8EC" style={{ borderRadius: 999 }} />
+      <Skeleton width={96} height={18} color="#E6E8EC" style={{ borderRadius: 999 }} />
+      <Skeleton width={68} height={16} color="#E6E8EC" style={{ borderRadius: 999 }} />
     </View>
   );
 }
 
-function AvailabilitySummary({ desks }: { desks: DeskAvailability[] }) {
-  const availableCount = desks.filter((desk) => desk.available).length;
+interface DeskCardProps {
+  desk: DeskAvailability;
+  onPress: () => void;
+}
+
+function DeskCard({ desk, onPress }: DeskCardProps) {
+  const label = desk.data ?? `Desk #${desk.id}`;
 
   return (
-    <View style={styles.summaryGrid}>
-      <View style={styles.summaryItem}>
-        <Text style={styles.summaryValue}>{desks.length}</Text>
-        <Text style={styles.summaryLabel}>Desks</Text>
-      </View>
-      <View style={styles.summaryItem}>
-        <Text style={[styles.summaryValue, styles.availableText]}>{availableCount}</Text>
-        <Text style={styles.summaryLabel}>Available</Text>
-      </View>
-      <View style={styles.summaryItem}>
-        <Text style={styles.summaryValue}>{desks.length - availableCount}</Text>
-        <Text style={styles.summaryLabel}>Unavailable</Text>
-      </View>
-    </View>
+    <Button style={styles.deskRow} onPress={onPress}>
+      <Text color="white" weight="medium" numberOfLines={2}>
+        {label}
+      </Text>
+    </Button>
   );
 }
 
 export default function OpenSpaceDetails() {
+  const { theme } = useUnistyles();
+
+  const modalRef = useRef<ModalRef>(null);
+  const [selectedDesk, setSelectedDesk] = useState<DeskAvailability | null>(null);
+
   const params = useLocalSearchParams<{ id?: string | string[]; imageUrl?: string | string[] }>();
   const openSpaceId = parseOpenSpaceId(params.id);
   const routeImageUrl = Array.isArray(params.imageUrl) ? params.imageUrl[0] : params.imageUrl;
@@ -125,322 +114,170 @@ export default function OpenSpaceDetails() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.centerState}>
-          <Text style={styles.error}>Invalid open space id.</Text>
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => router.back()}>
-            <Text style={styles.secondaryButtonText}>Go Back</Text>
-          </TouchableOpacity>
+          <Text tone="text.secondary">Invalid open space id.</Text>
+          <Button style={styles.secondaryButton} onPress={() => router.back()}>
+            <Text weight="medium" color="#007AFF">
+              Go Back
+            </Text>
+          </Button>
         </View>
       </SafeAreaView>
     );
   }
 
+  if (!openSpace.data) return null;
+
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.content}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Text style={styles.backButtonText}>Back</Text>
-        </TouchableOpacity>
+    <>
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        <Image source={heroImageUrl} style={styles.hero} contentFit="cover" />
+        <BackButton style={styles.backButton} />
 
-        <SharedExpoImage
-          group={OPEN_SPACE_HERO_GROUP}
-          id={String(openSpaceId)}
-          source={heroImageUrl}
-          style={styles.hero}
-        />
-
-        {openSpace.isPending ? (
-          <View style={styles.centerState}>
-            <ActivityIndicator color="#007AFF" />
-            <Text style={styles.stateText}>Loading open space...</Text>
+        <View style={styles.content}>
+          <View style={styles.header}>
+            <Text size="2xl" weight="medium">
+              {openSpace.data.name}
+            </Text>
+            <Text size="lg" tone="text.secondary">
+              {getLocation(openSpace.data)}
+            </Text>
           </View>
-        ) : openSpace.isError ? (
-          <View style={styles.centerState}>
-            <Text style={styles.error}>{openSpace.error.message}</Text>
-            <TouchableOpacity style={styles.secondaryButton} onPress={() => openSpace.refetch()}>
-              <Text style={styles.secondaryButtonText}>Try Again</Text>
-            </TouchableOpacity>
+
+          <View style={styles.details}>
+            <View style={styles.detailRow}>
+              <ClockIconStroke
+                width={16}
+                height={16}
+                strokeWidth={2}
+                color={theme.colors.text.secondary}
+              />
+              <Text tone="text.secondary">
+                {openSpace.data.opened_at ?? "09:00"} – {openSpace.data.closed_at ?? "18:00"}
+              </Text>
+            </View>
+            <View style={styles.detailRow}>
+              <MapPinStroke
+                width={18}
+                height={18}
+                strokeWidth={2}
+                color={theme.colors.text.secondary}
+              />
+              <Text tone="text.secondary">
+                {openSpace.data.place_name ?? "D1"},{" "}
+                {openSpace.data.address ?? "Plac Grunwaldzki 13, 50-378 Wrocław"}
+              </Text>
+            </View>
           </View>
-        ) : (
-          <>
-            <View style={styles.header}>
-              <Text style={styles.eyebrow}>Open space #{openSpace.data.id}</Text>
-              <Text style={styles.title}>{openSpace.data.name}</Text>
-              <Text style={styles.location}>{getLocation(openSpace.data)}</Text>
-            </View>
 
-            <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Metadata</Text>
-              <MetadataRow label="Place" value={openSpace.data.place_name} />
-              <MetadataRow label="Address" value={openSpace.data.address} />
-              <MetadataRow label="Building" value={openSpace.data.building} />
-              <MetadataRow label="Floor" value={openSpace.data.floor} />
-              <MetadataRow label="Latitude" value={openSpace.data.latitude} />
-              <MetadataRow label="Longitude" value={openSpace.data.longitude} />
-              <MetadataRow label="Image URL" value={openSpace.data.image_url} />
-              <MetadataRow label="Opens" value={openSpace.data.opened_at} />
-              <MetadataRow label="Closes" value={openSpace.data.closed_at} />
-            </View>
+          <View style={styles.section}>
+            <Text size="xl" weight="medium">
+              Desks
+            </Text>
 
-            <View style={styles.card}>
-              <View style={styles.sectionHeader}>
-                <View>
-                  <Text style={styles.sectionTitle}>Desk Availability</Text>
-                  <Text style={styles.sectionSubtitle}>Today, {availabilityWindow.label}</Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.refreshButton}
-                  onPress={() => availability.refetch()}
-                >
-                  <Text style={styles.refreshButtonText}>Refresh</Text>
-                </TouchableOpacity>
-              </View>
-
+            <View style={styles.deskList}>
               {availability.isPending ? (
-                <View style={styles.inlineState}>
-                  <ActivityIndicator color="#007AFF" />
-                  <Text style={styles.stateText}>Loading availability...</Text>
-                </View>
-              ) : availability.isError ? (
-                <View style={styles.inlineState}>
-                  <Text style={styles.error}>{availability.error.message}</Text>
-                </View>
-              ) : availability.data.length === 0 ? (
-                <Text style={styles.stateText}>No desks found for this open space.</Text>
-              ) : (
                 <>
-                  <AvailabilitySummary desks={availability.data} />
-                  <View style={styles.deskList}>
-                    {availability.data.map((desk) => (
-                      <View key={desk.id} style={styles.deskRow}>
-                        <View>
-                          <Text style={styles.deskTitle}>{desk.data ?? `Desk #${desk.id}`}</Text>
-                          <Text style={styles.deskMeta}>
-                            x {desk.x}, y {desk.y}, {desk.width} x {desk.height}
-                          </Text>
-                        </View>
-                        <Text
-                          style={[
-                            styles.statusPill,
-                            desk.available ? styles.availablePill : styles.unavailablePill,
-                          ]}
-                        >
-                          {desk.available ? "Available" : "Unavailable"}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
+                  <DeskCardSkeleton />
+                  <DeskCardSkeleton />
+                  <DeskCardSkeleton />
+                  <DeskCardSkeleton />
                 </>
+              ) : availability.isError ? (
+                <Text color="#EC6A5B">{availability.error.message}</Text>
+              ) : availability.data.length === 0 ? (
+                <Text tone="text.secondary">No desks found for this open space.</Text>
+              ) : (
+                availability.data.map((desk) => (
+                  <DeskCard
+                    key={desk.id}
+                    desk={desk}
+                    onPress={() => {
+                      setSelectedDesk(desk);
+                      modalRef.current?.present();
+                    }}
+                  />
+                ))
               )}
             </View>
-          </>
-        )}
+          </View>
+        </View>
       </ScrollView>
-    </SafeAreaView>
+      <ReservationModal
+        ref={modalRef}
+        deskId={selectedDesk?.id ?? null}
+        deskLabel={selectedDesk?.data}
+        onConfirm={() => {}}
+      />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "white",
+  },
+  hero: {
+    height: 290,
+    overflow: "hidden",
+  },
+  backButton: {
+    position: "absolute",
+    backgroundColor: "#EDEDEF",
+    top: 64,
+    left: 24,
   },
   content: {
     padding: 24,
-    gap: 16,
-  },
-  backButton: {
-    alignSelf: "flex-start",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: "#fff",
-  },
-  backButtonText: {
-    color: "#007AFF",
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  hero: {
-    height: 264,
-    overflow: "hidden",
-    borderRadius: 24,
-    backgroundColor: "#E5E5EA",
-  },
-  heroImage: {
-    bottom: 0,
-    left: 0,
-    position: "absolute",
-    right: 0,
-    top: 0,
+    gap: 24,
   },
   header: {
+    gap: 6,
+  },
+  details: {
     gap: 8,
   },
-  eyebrow: {
-    color: "#666",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  title: {
-    color: "#111",
-    fontSize: 30,
-    fontWeight: "700",
-  },
-  location: {
-    color: "#3A3A3C",
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 18,
-    gap: 14,
-  },
-  sectionHeader: {
+  detailRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: 8,
+  },
+  section: {
     gap: 12,
   },
-  sectionTitle: {
-    color: "#111",
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  sectionSubtitle: {
-    color: "#666",
-    fontSize: 13,
-    marginTop: 2,
-  },
-  metaRow: {
-    gap: 4,
-    paddingBottom: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#E5E5EA",
-  },
-  metaLabel: {
-    color: "#666",
-    fontSize: 12,
-    fontWeight: "600",
-    textTransform: "uppercase",
-  },
-  metaValue: {
-    color: "#111",
-    fontSize: 15,
-    lineHeight: 21,
-  },
-  summaryGrid: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  summaryItem: {
-    flex: 1,
-    minHeight: 70,
-    borderRadius: 10,
-    backgroundColor: "#F2F2F7",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-  },
-  summaryValue: {
-    color: "#111",
-    fontSize: 22,
-    fontWeight: "700",
-    fontVariant: ["tabular-nums"],
-  },
-  availableText: {
-    color: "#248A3D",
-  },
-  summaryLabel: {
-    color: "#666",
-    fontSize: 12,
-    fontWeight: "600",
-  },
   deskList: {
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 10,
   },
   deskRow: {
-    minHeight: 64,
-    borderRadius: 10,
-    backgroundColor: "#F8F8FA",
-    padding: 12,
-    flexDirection: "row",
-    alignItems: "center",
+    width: "48%",
+    minHeight: 118,
+    alignItems: "flex-start",
     justifyContent: "space-between",
-    gap: 12,
-  },
-  deskTitle: {
-    color: "#111",
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  deskMeta: {
-    color: "#666",
-    fontSize: 12,
-    marginTop: 3,
+    gap: 8,
+    backgroundColor: "#00B2FF",
+    borderRadius: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
   },
   statusPill: {
     flexShrink: 0,
     borderRadius: 999,
-    overflow: "hidden",
     paddingVertical: 5,
-    paddingHorizontal: 9,
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  availablePill: {
-    backgroundColor: "#E4F7E9",
-    color: "#248A3D",
-  },
-  unavailablePill: {
-    backgroundColor: "#FEECEC",
-    color: "#C92A2A",
+    paddingHorizontal: 10,
   },
   centerState: {
     minHeight: 220,
-    borderRadius: 12,
     padding: 20,
-    backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
     gap: 12,
-  },
-  inlineState: {
-    minHeight: 96,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-  },
-  stateText: {
-    color: "#666",
-    fontSize: 15,
-    textAlign: "center",
-  },
-  error: {
-    color: "#FF3B30",
-    fontSize: 15,
-    textAlign: "center",
   },
   secondaryButton: {
     backgroundColor: "#E7F0FF",
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 8,
-  },
-  secondaryButtonText: {
-    color: "#007AFF",
-    fontWeight: "600",
-  },
-  refreshButton: {
-    flexShrink: 0,
-    backgroundColor: "#E7F0FF",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-  },
-  refreshButtonText: {
-    color: "#007AFF",
-    fontWeight: "600",
   },
 });

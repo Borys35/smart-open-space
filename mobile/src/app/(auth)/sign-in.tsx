@@ -1,9 +1,11 @@
-import { useAuthActions } from "@/components/auth/auth-actions-context";
 import { useAuth } from "@/hooks/use-auth";
 import { validateSignIn } from "@/lib/auth-validation";
 import { AuthFormScreen, AuthTextInput } from "@/pages/auth/auth-form";
+import { Button, Text } from "@ssobkowski/rnui";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, View } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 
 import type { TextInput } from "react-native";
 
@@ -17,7 +19,6 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
 
   const { login } = useAuth();
-  const { setSignInAction, setSignInLoading, setSignInValidation } = useAuthActions();
   const router = useRouter();
 
   const signInValidation = useMemo(() => validateSignIn(email, password), [email, password]);
@@ -42,35 +43,37 @@ export default function SignIn() {
     router.back();
   };
 
-  useEffect(() => {
-    setSignInAction(handleSignIn);
-
-    return () => {
-      setSignInAction(null);
-    };
-  }, [setSignInAction, handleSignIn]);
-
-  useEffect(() => {
-    setSignInLoading(loading);
-
-    return () => {
-      setSignInLoading(false);
-    };
-  }, [loading, setSignInLoading]);
-
-  useEffect(() => {
-    setSignInValidation(signInValidation);
-  }, [setSignInValidation, signInValidation]);
-
-  useEffect(
-    () => () => {
-      setSignInValidation({ hint: null, valid: false });
-    },
-    [setSignInValidation],
-  );
-
   return (
-    <AuthFormScreen error={error} onBack={handleGoBack} title="Sign In">
+    <AuthFormScreen
+      error={error}
+      footer={
+        <View style={styles.actions}>
+          {signInValidation.hint && (
+            <Text accessibilityLiveRegion="polite" color="#8E8E93" size="sm" style={styles.hint}>
+              {signInValidation.hint}
+            </Text>
+          )}
+
+          <Button
+            variant="primary"
+            disabled={!signInValidation.valid || loading}
+            disabledStyle={styles.primaryButtonDisabled}
+            onPress={handleSignIn}
+            style={styles.primaryButton}
+          >
+            {loading ? (
+              <ActivityIndicator color="#733e0a" />
+            ) : (
+              <Text tone="text.primary" size="xl" weight="medium">
+                Continue
+              </Text>
+            )}
+          </Button>
+        </View>
+      }
+      onBack={handleGoBack}
+      title="Sign In"
+    >
       <AuthTextInput
         ref={emailInputRef}
         autoCapitalize="none"
@@ -102,3 +105,19 @@ export default function SignIn() {
     </AuthFormScreen>
   );
 }
+
+const styles = StyleSheet.create((t) => ({
+  actions: {
+    gap: 10,
+  },
+  hint: {
+    textAlign: "center",
+  },
+  primaryButton: {
+    minHeight: 48,
+    backgroundColor: t.colors.button.primary,
+  },
+  primaryButtonDisabled: {
+    opacity: 0.45,
+  },
+}));

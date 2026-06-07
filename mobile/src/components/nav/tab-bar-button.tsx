@@ -41,7 +41,7 @@ export const TabBarButton = ({ isFocused, name, badge, ...props }: TabBarButtonP
   return (
     // @ts-expect-error Fuck you
     <Button {...props} variant="icon" hitSlop={14} config={{ scaleTo: 0.96 }}>
-      <IconComponent width={30} height={30} color={isFocused ? "black" : theme.colors.muted} />
+      <IconComponent width={30} height={30} color={isFocused ? "black" : theme.colors.text.muted} />
 
       {showBadge && (
         <View

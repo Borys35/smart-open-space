@@ -39,11 +39,20 @@ const theme = {
     text: {
       primary: "#733e0a",
       secondary: "#9b9b9b",
+      muted: "#bdbdc1",
     },
     button: {
       primary: "#fdc700",
     },
-    muted: "#bdbdc1",
+    modal: {
+      background: "#fff",
+      header: {
+        button: {
+          background: "#ededef",
+          icon: "#87868b",
+        },
+      },
+    },
     border: "#f5f5f5",
   },
 } as const;

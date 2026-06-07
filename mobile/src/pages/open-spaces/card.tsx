@@ -1,8 +1,6 @@
 import { useDeskAvailability } from "@/hooks/use-open-spaces";
 import { DEFAULT_OPEN_SPACE_IMAGE_URL } from "@/lib/open-space-images";
-import { OPEN_SPACE_HERO_GROUP } from "@/lib/transition-ids";
 import { Button, ClockIconStroke, MapPinStroke, Skeleton, Text } from "@ssobkowski/rnui";
-import { SharedExpoImage } from "@ssobkowski/stack/expo-image";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useMemo } from "react";
@@ -169,14 +167,9 @@ export function OpenSpaceCard({ openSpace }: { openSpace: MobileOpenSpaceSummary
   };
 
   return (
-    <Button onPress={handlePress} config={{ scaleTo: 1 }} style={styles.card}>
+    <Button onPress={handlePress} config={{ scaleTo: 0.96 }} style={styles.card}>
       <View style={styles.cardImage}>
-        <SharedExpoImage
-          group={OPEN_SPACE_HERO_GROUP}
-          id={String(openSpace.id)}
-          source={imageUrl}
-          style={styles.image}
-        />
+        <Image source={imageUrl} style={styles.image} contentFit="cover" />
 
         {hasSchedule && (
           <View style={styles.schedulePill}>
@@ -249,11 +242,6 @@ const styles = StyleSheet.create(() => ({
     position: "relative",
     height: 264,
   },
-  sharedImage: {
-    ...StyleSheet.absoluteFill,
-    overflow: "hidden",
-    borderRadius: 24,
-  },
   schedulePill: {
     position: "absolute",
     top: 14,
@@ -270,7 +258,8 @@ const styles = StyleSheet.create(() => ({
   image: {
     ...StyleSheet.absoluteFill,
     overflow: "hidden",
-    borderRadius: 24,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
   cardContent: {
     margin: 12,

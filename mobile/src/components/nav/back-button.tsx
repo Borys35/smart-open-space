@@ -1,20 +1,30 @@
-import { Ionicons } from "@expo/vector-icons";
-import { Button } from "@ssobkowski/rnui";
+import { Button, ChevronLeftIcon } from "@ssobkowski/rnui";
 import { useRouter } from "expo-router";
+import { StyleSheet } from "react-native-unistyles";
+
+import type { StyleProp, ViewStyle } from "react-native";
 
 interface BackButtonProps {
   onPress?: () => void;
   children?: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
 }
 
-export function BackButton({ onPress, children }: BackButtonProps) {
+export function BackButton({ onPress, children, style }: BackButtonProps) {
   const router = useRouter();
 
   const handlePress = onPress ?? router.back;
 
   return (
-    <Button hitSlop={16} onPress={handlePress}>
-      {children ?? <Ionicons color="#909096" name="chevron-back" size={26} />}
+    <Button variant="icon" hitSlop={16} onPress={handlePress} style={[styles.button, style]}>
+      {children ?? <ChevronLeftIcon color="#909096" width={36} height={36} strokeWidth={2} />}
     </Button>
   );
 }
+
+const styles = StyleSheet.create({
+  button: {
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+  },
+});

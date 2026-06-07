@@ -25,11 +25,25 @@ export interface DeskAvailability {
   available: boolean;
 }
 
+export interface DeskAvailabilityWindow {
+  start_time: string;
+  end_time: string;
+  duration_minutes: number;
+}
+
+export interface DeskAvailabilityWindowsResponse {
+  desk_id: number;
+  date: string;
+  windows: DeskAvailabilityWindow[];
+}
+
 export const openSpaceKeys = {
   list: (userId: number | null) => ["open-spaces", userId] as const,
   detail: (openSpaceId: number | null) => ["open-spaces", "detail", openSpaceId] as const,
   availability: (openSpaceId: number | null, startTime: string, endTime: string) =>
     ["open-spaces", "availability", openSpaceId, startTime, endTime] as const,
+  deskAvailabilityWindows: (deskId: number | null, date: string, minDurationMinutes: number) =>
+    ["desks", "availability-windows", deskId, date, minDurationMinutes] as const,
 };
 
 export function useOpenSpaces(userId: number | null) {
@@ -62,5 +76,20 @@ export function useDeskAvailability(
         )}&end_time=${encodeURIComponent(endTime)}`,
       ),
     enabled: openSpaceId !== null,
+  });
+}
+
+export function useDeskAvailabilityWindows(
+  deskId: number | null,
+  date: string,
+  minDurationMinutes = 10,
+) {
+  return useQuery({
+    queryKey: openSpaceKeys.deskAvailabilityWindows(deskId, date, minDurationMinutes),
+    queryFn: () =>
+      api.get<DeskAvailabilityWindowsResponse>(
+        `/api/desks/${deskId}/availability-windows?date=${date}&min_duration_minutes=${minDurationMinutes}`,
+      ),
+    enabled: deskId !== null && date.length > 0,
   });
 }

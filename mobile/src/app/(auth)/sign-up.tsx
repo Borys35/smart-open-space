@@ -1,9 +1,11 @@
-import { useAuthActions } from "@/components/auth/auth-actions-context";
 import { useAuth } from "@/hooks/use-auth";
 import { validateSignUp } from "@/lib/auth-validation";
 import { AuthFormScreen, AuthTextInput } from "@/pages/auth/auth-form";
+import { Button, Text } from "@ssobkowski/rnui";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, View } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 
 import type { TextInput } from "react-native";
 
@@ -19,7 +21,6 @@ export default function SignUp() {
   const [loading, setLoading] = useState(false);
 
   const { register } = useAuth();
-  const { setSignUpAction, setSignUpLoading, setSignUpValidation } = useAuthActions();
   const router = useRouter();
 
   const signUpValidation = useMemo(
@@ -48,35 +49,37 @@ export default function SignUp() {
     router.back();
   };
 
-  useEffect(() => {
-    setSignUpAction(handleSignUp);
-
-    return () => {
-      setSignUpAction(null);
-    };
-  }, [handleSignUp, setSignUpAction]);
-
-  useEffect(() => {
-    setSignUpLoading(loading);
-
-    return () => {
-      setSignUpLoading(false);
-    };
-  }, [loading, setSignUpLoading]);
-
-  useEffect(() => {
-    setSignUpValidation(signUpValidation);
-  }, [setSignUpValidation, signUpValidation]);
-
-  useEffect(
-    () => () => {
-      setSignUpValidation({ hint: null, valid: false });
-    },
-    [setSignUpValidation],
-  );
-
   return (
-    <AuthFormScreen error={error} onBack={handleGoBack} title="Sign Up">
+    <AuthFormScreen
+      error={error}
+      footer={
+        <View style={styles.actions}>
+          {signUpValidation.hint && (
+            <Text accessibilityLiveRegion="polite" color="#8E8E93" size="sm" style={styles.hint}>
+              {signUpValidation.hint}
+            </Text>
+          )}
+
+          <Button
+            variant="primary"
+            disabled={!signUpValidation.valid || loading}
+            disabledStyle={styles.primaryButtonDisabled}
+            onPress={handleSignUp}
+            style={styles.primaryButton}
+          >
+            {loading ? (
+              <ActivityIndicator color="#733e0a" />
+            ) : (
+              <Text tone="text.primary" size="xl" weight="medium">
+                Create account
+              </Text>
+            )}
+          </Button>
+        </View>
+      }
+      onBack={handleGoBack}
+      title="Sign Up"
+    >
       <AuthTextInput
         ref={nameInputRef}
         autoCapitalize="words"
@@ -120,3 +123,19 @@ export default function SignUp() {
     </AuthFormScreen>
   );
 }
+
+const styles = StyleSheet.create((t) => ({
+  actions: {
+    gap: 10,
+  },
+  hint: {
+    textAlign: "center",
+  },
+  primaryButton: {
+    minHeight: 48,
+    backgroundColor: t.colors.button.primary,
+  },
+  primaryButtonDisabled: {
+    opacity: 0.45,
+  },
+}));

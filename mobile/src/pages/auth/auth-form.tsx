@@ -1,7 +1,14 @@
 import { BackButton } from "@/components/nav/back-button";
 import { Text } from "@ssobkowski/rnui";
 import { ScrollView, TextInput, View } from "react-native";
-import { Easing, FadeOut, withSequence, withTiming } from "react-native-reanimated";
+import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
+import Animated, {
+  Easing,
+  FadeOut,
+  useAnimatedStyle,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StyleSheet } from "react-native-unistyles";
 
@@ -47,11 +54,16 @@ const ERROR_EXITING = FadeOut.duration(150);
 
 interface AuthFormScreenProps extends PropsWithChildren {
   error: string;
+  footer: React.ReactNode;
   onBack: () => void;
   title: string;
 }
 
-export function AuthFormScreen({ children, error, onBack, title }: AuthFormScreenProps) {
+export function AuthFormScreen({ children, error, footer, onBack, title }: AuthFormScreenProps) {
+  const { height } = useReanimatedKeyboardAnimation();
+
+  const footerStyle = useAnimatedStyle(() => ({ transform: [{ translateY: height.get() }] }));
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -70,6 +82,8 @@ export function AuthFormScreen({ children, error, onBack, title }: AuthFormScree
         <View style={styles.fields}>{children}</View>
         {error ? <AuthFormError>{error}</AuthFormError> : null}
       </ScrollView>
+
+      <Animated.View style={[styles.footer, footerStyle]}>{footer}</Animated.View>
     </SafeAreaView>
   );
 }
@@ -122,7 +136,7 @@ const styles = StyleSheet.create((t) => ({
     flexGrow: 1,
     paddingHorizontal: 36,
     paddingTop: 39,
-    paddingBottom: 128,
+    paddingBottom: 24,
   },
   fields: {
     gap: 34,
@@ -141,5 +155,12 @@ const styles = StyleSheet.create((t) => ({
   error: {
     marginTop: 28,
     paddingHorizontal: 10,
+  },
+  footer: {
+    padding: 24,
+    paddingTop: 16,
+    gap: 10,
+    experimental_backgroundImage:
+      "linear-gradient(rgba(255, 255, 255, 0), rgba(255, 255, 255, 1) 36%)",
   },
 }));
