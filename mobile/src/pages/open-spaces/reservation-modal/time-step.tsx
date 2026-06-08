@@ -61,11 +61,9 @@ export function ReservationTimeStep({
   const startProgress = useSharedValue(0);
   const endProgress = useSharedValue(1);
   const activeMarker = useSharedValue<Marker>("end");
-  const storedStartMinuteOfDay = useReservationPreferencesStore((state) => state.startMinuteOfDay);
-  const storedEndMinuteOfDay = useReservationPreferencesStore((state) => state.endMinuteOfDay);
-  const setStoredTimeWindow = useReservationPreferencesStore(
-    (state) => state.setSelectedTimeWindow,
-  );
+  const storedStartMinuteOfDay = useReservationPreferencesStore((s) => s.startMinuteOfDay);
+  const storedEndMinuteOfDay = useReservationPreferencesStore((s) => s.endMinuteOfDay);
+  const setStoredTimeWindow = useReservationPreferencesStore((s) => s.setSelectedTimeWindow);
 
   const timelineStartWindow = useMemo(() => getTimelineStart(windows), [windows]);
   const timelineEndWindow = useMemo(() => getTimelineEnd(windows), [windows]);
@@ -232,7 +230,7 @@ export function ReservationTimeStep({
 
   return (
     <ModalStepView index={1} style={styles.modal}>
-      <ModalHeader text="Choose time" />
+      <ModalHeader>Choose time</ModalHeader>
 
       {timelineStartTime === null || timelineEndTime === null ? (
         <Text color="#EC6A5B" weight="medium">

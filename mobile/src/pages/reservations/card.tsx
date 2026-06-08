@@ -1,4 +1,4 @@
-import { formatOrdinal } from "@/lib/fmt";
+import { formatOrdinal, formatReservationTime } from "@/lib/fmt";
 import { DEFAULT_OPEN_SPACE_IMAGE_URL } from "@/lib/open-space-images";
 import { ReservationDetailsModal } from "@/pages/reservations/modal";
 import { Button } from "@ssobkowski/rnui/button";
@@ -8,24 +8,11 @@ import { Text } from "@ssobkowski/rnui/text";
 import { Image } from "expo-image";
 import { useRef } from "react";
 import { View } from "react-native";
+import { FadeOutRight } from "react-native-reanimated";
 import { StyleSheet, useUnistyles } from "react-native-unistyles";
 
 import type { ReservationResponse } from "@/hooks/use-open-spaces";
 import type { ModalRef } from "@ssobkowski/rnui/modal";
-
-const INTL_DTF_DAY = new Intl.DateTimeFormat("en", {
-  month: "short",
-  day: "numeric",
-});
-
-const INTL_DTF_TIME = new Intl.DateTimeFormat("pl", {
-  hour: "numeric",
-  minute: "numeric",
-});
-
-function formatReservationTime(startTime: string, endTime: string) {
-  return `${INTL_DTF_DAY.format(new Date(startTime))} ${INTL_DTF_TIME.format(new Date(startTime))} - ${INTL_DTF_TIME.format(new Date(endTime))}`;
-}
 
 function formatOpenSpaceDetails(building: string | null, floor: number) {
   return building ? `${formatOrdinal(floor)} Floor ∙ ${building}` : `${formatOrdinal(floor)} Floor`;
@@ -57,6 +44,7 @@ export function ReservationCard({ reservation }: { reservation: ReservationRespo
         style={styles.card}
         onPress={() => modalRef.current?.present()}
         config={{ scaleTo: 0.96 }}
+        exiting={FadeOutRight}
       >
         <View style={styles.cardImage}>
           <Image source={imageUrl} style={styles.image} contentFit="cover" />

@@ -52,6 +52,13 @@
         }
       ],
       [
+        "expo-calendar",
+        {
+          "calendarPermission": "The app needs to access your calendar to save your reservations.",
+          "remindersPermission": "The app needs to access your reminders."
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "android": {

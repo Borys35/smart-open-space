@@ -1,13 +1,14 @@
-import { useMyReservations } from "@/hooks/use-open-spaces";
+import { useActiveReservations } from "@/hooks/use-open-spaces";
 import { ReservationCard, ReservationCardSkeleton } from "@/pages/reservations/card";
 import { Button } from "@ssobkowski/rnui/button";
 import { Text } from "@ssobkowski/rnui/text";
 import { ScrollView, View } from "react-native";
+import Animated, { LinearTransition } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StyleSheet } from "react-native-unistyles";
 
 export default function Reservations() {
-  const reservations = useMyReservations();
+  const reservations = useActiveReservations();
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
@@ -50,11 +51,11 @@ export default function Reservations() {
             </Text>
           </View>
         ) : (
-          <View style={styles.list}>
+          <Animated.View layout={LinearTransition} style={styles.list}>
             {reservations.data.map((reservation) => (
-              <ReservationCard key={reservation.id} reservation={reservation} />
+              <ReservationCard key={`res-${reservation.id}`} reservation={reservation} />
             ))}
-          </View>
+          </Animated.View>
         )}
       </ScrollView>
     </SafeAreaView>

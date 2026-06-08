@@ -43,6 +43,7 @@ const theme = {
     },
     button: {
       primary: "#fdc700",
+      destructive: "#ff1934",
     },
     modal: {
       background: "#fff",

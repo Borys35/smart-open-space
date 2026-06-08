@@ -137,9 +137,9 @@ export function ReservationDateStep({
 
   return (
     <ModalStepView index={0} style={styles.modal}>
-      <ModalHeader
-        text={deskLabel ? `Reserve ${deskLabel}` : isAutoFinder ? "Find a desk" : "Reserve desk"}
-      />
+      <ModalHeader>
+        {deskLabel ? `Reserve ${deskLabel}` : isAutoFinder ? "Find a desk" : "Reserve desk"}
+      </ModalHeader>
 
       <View style={styles.dateStepper}>
         <Button

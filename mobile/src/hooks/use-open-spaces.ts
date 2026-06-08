@@ -66,6 +66,27 @@ export interface ReservationResponse {
   status: string;
 }
 
+const ACTIVE_RESERVATION_STATUSES = new Set(["CONFIRMED", "PENDING"]);
+
+function getReservationDistanceFromNow(reservation: ReservationResponse, now: number) {
+  const start = new Date(reservation.start_time).getTime();
+  const end = new Date(reservation.end_time).getTime();
+
+  if (start <= now && now <= end) {
+    return 0;
+  }
+
+  return Math.min(Math.abs(start - now), Math.abs(end - now));
+}
+
+function sortReservationsByDistanceFromNow(reservations: ReservationResponse[]) {
+  const now = Date.now();
+
+  return [...reservations].sort(
+    (a, b) => getReservationDistanceFromNow(a, now) - getReservationDistanceFromNow(b, now),
+  );
+}
+
 export const openSpaceKeys = {
   list: (userId: number | null) => ["open-spaces", userId] as const,
   detail: (openSpaceId: number | null) => ["open-spaces", "detail", openSpaceId] as const,
@@ -151,22 +172,20 @@ export function useMyReservations() {
   return useQuery({
     queryKey: openSpaceKeys.myReservations(),
     queryFn: () => api.get<ReservationResponse[]>("/api/reservations/my"),
-    select: (reservations) => {
-      const now = Date.now();
-      const getDistanceFromNow = (reservation: ReservationResponse) => {
-        const start = new Date(reservation.start_time).getTime();
-        const end = new Date(reservation.end_time).getTime();
-
-        if (start <= now && now <= end) {
-          return 0;
-        }
-
-        return Math.min(Math.abs(start - now), Math.abs(end - now));
-      };
-
-      return [...reservations].sort((a, b) => getDistanceFromNow(a) - getDistanceFromNow(b));
-    },
+    select: sortReservationsByDistanceFromNow,
   });
+}
+
+export function useActiveReservations() {
+  const reservations = useMyReservations();
+
+  return {
+    ...reservations,
+    data:
+      reservations.data?.filter((reservation) =>
+        ACTIVE_RESERVATION_STATUSES.has(reservation.status),
+      ) ?? [],
+  };
 }
 
 export function useCreateReservation() {
@@ -175,6 +194,19 @@ export function useCreateReservation() {
   return useMutation({
     mutationFn: (data: ReservationCreate) =>
       api.post<ReservationResponse>("/api/reservations", data),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: openSpaceKeys.myReservations() });
+      await queryClient.invalidateQueries({ queryKey: ["desks", "availability-windows"] });
+      await queryClient.invalidateQueries({ queryKey: ["open-spaces", "availability"] });
+    },
+  });
+}
+
+export function useCancelReservation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (reservationId: number) => api.delete<void>(`/api/reservations/${reservationId}`),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: openSpaceKeys.myReservations() });
       await queryClient.invalidateQueries({ queryKey: ["desks", "availability-windows"] });

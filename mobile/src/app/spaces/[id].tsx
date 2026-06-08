@@ -125,7 +125,7 @@ export default function OpenSpaceDetails() {
     }
 
     try {
-      await createReservation.mutateAsync({
+      const result = await createReservation.mutateAsync({
         desk_id: deskId,
         start_time: selection.startTime,
         end_time: selection.endTime,
@@ -135,7 +135,13 @@ export default function OpenSpaceDetails() {
         "Reservation confirmed",
         selection.deskLabel ? `Desk: ${selection.deskLabel}` : "Your desk is reserved.",
       );
-      router.push("/reservations");
+      modalRef.current?.dismiss();
+      router.push({
+        pathname: "/reservations",
+        params: {
+          reservationId: result.id,
+        },
+      });
     } catch (error) {
       Alert.alert(
         "Could not reserve desk",
