@@ -465,9 +465,20 @@ class ReservationQuoteRequest(BaseModel):
     start_time: datetime
     end_time: datetime
 
+class ReservationOpenSpaceResponse(BaseModel):
+    id: int
+    name: str
+    building: str | None = None
+    floor: int
+    address: str | None = None
+    place_name: str | None = None
+    image_url: str | None = None
+
 class ReservationResponse(BaseModel):
     id: int
     desk_id: int
+    desk_label: str | None = None
+    open_space: ReservationOpenSpaceResponse
     start_time: datetime
     end_time: datetime
     credit_cost: int

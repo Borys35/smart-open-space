@@ -50,6 +50,16 @@ export interface ReservationCreate {
 export interface ReservationResponse {
   id: number;
   desk_id: number;
+  desk_label: string | null;
+  open_space: {
+    id: number;
+    name: string;
+    building: string | null;
+    floor: number;
+    address: string | null;
+    place_name: string | null;
+    image_url: string | null;
+  };
   start_time: string;
   end_time: string;
   credit_cost: number;
@@ -134,6 +144,28 @@ export function useDesksAvailabilityWindows(
       },
       enabled: date.length > 0,
     })),
+  });
+}
+
+export function useMyReservations() {
+  return useQuery({
+    queryKey: openSpaceKeys.myReservations(),
+    queryFn: () => api.get<ReservationResponse[]>("/api/reservations/my"),
+    select: (reservations) => {
+      const now = Date.now();
+      const getDistanceFromNow = (reservation: ReservationResponse) => {
+        const start = new Date(reservation.start_time).getTime();
+        const end = new Date(reservation.end_time).getTime();
+
+        if (start <= now && now <= end) {
+          return 0;
+        }
+
+        return Math.min(Math.abs(start - now), Math.abs(end - now));
+      };
+
+      return [...reservations].sort((a, b) => getDistanceFromNow(a) - getDistanceFromNow(b));
+    },
   });
 }
 

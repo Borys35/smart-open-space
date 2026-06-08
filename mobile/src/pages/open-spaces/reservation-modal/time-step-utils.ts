@@ -14,7 +14,7 @@ export const MINUTE_RESOLUTION = 5;
 export const ARC_HEIGHT = 210;
 export const MARKER_SIZE = 28;
 
-const INTL_DTF = new Intl.DateTimeFormat("en", {
+const INTL_DTF = new Intl.DateTimeFormat("pl", {
   hour: "numeric",
   minute: "numeric",
 });

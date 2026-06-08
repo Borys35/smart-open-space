@@ -1,4 +1,5 @@
 import { useDeskAvailability } from "@/hooks/use-open-spaces";
+import { formatOrdinal } from "@/lib/fmt";
 import { DEFAULT_OPEN_SPACE_IMAGE_URL } from "@/lib/open-space-images";
 import { Button, ClockIconStroke, MapPinStroke, Skeleton, Text } from "@ssobkowski/rnui";
 import { Image } from "expo-image";
@@ -23,16 +24,6 @@ const BADGE_COLORS = {
     text: "#EC6A5B",
   },
 } as const;
-
-function formatOrdinal(floor: number) {
-  const n = floor % 100;
-  const s = floor % 10;
-  if (n >= 11 && n <= 13) return `${floor}th`;
-  if (s === 1) return `${floor}st`;
-  if (s === 2) return `${floor}nd`;
-  if (s === 3) return `${floor}rd`;
-  return `${floor}th`;
-}
 
 function parseTimeParts(time: string | null | undefined, fallbackHour: number, fallbackMinute = 0) {
   const [hour, minute] = (time ?? "").split(":").map(Number);

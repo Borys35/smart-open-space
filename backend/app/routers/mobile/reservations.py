@@ -2,7 +2,7 @@ from math import ceil
 from datetime import date, datetime, time, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session 
+from sqlalchemy.orm import Session, joinedload
 
 from app.constants import (
     CREDIT_TRANSACTION_REFUND,
@@ -28,9 +28,21 @@ router = APIRouter(prefix="/api/reservations", tags=["mobile-reservations"])
 desks_router = APIRouter(prefix="/api/desks", tags=["mobile-desks"])
 
 def serialize_reservation(reservation: Reservation):
+    open_space = reservation.desk.open_space if reservation.desk else None
+
     return {
         "id": reservation.id,
         "desk_id": reservation.desk_id,
+        "desk_label": reservation.desk.label if reservation.desk else None,
+        "open_space": {
+            "id": open_space.id,
+            "name": open_space.name,
+            "building": open_space.building,
+            "floor": open_space.floor,
+            "address": open_space.address,
+            "place_name": open_space.place_name,
+            "image_url": open_space.image_url,
+        } if open_space else None,
         "start_time": as_utc(reservation.start_time),
         "end_time": as_utc(reservation.end_time),
         "credit_cost": reservation.credit_cost,
@@ -215,10 +227,13 @@ def get_my_reservations(
     current_user: User = Depends(get_current_user)
 ):
     
-    reservations = db.query(Reservation
-                    ).filter(Reservation.user_id == current_user.id
-                    ).order_by(Reservation.start_time.desc()
-                    ).all()
+    reservations = (
+        db.query(Reservation)
+        .options(joinedload(Reservation.desk).joinedload(Desk.open_space))
+        .filter(Reservation.user_id == current_user.id)
+        .order_by(Reservation.start_time.desc())
+        .all()
+    )
     
     return [serialize_reservation(reservation) for reservation in reservations]
 
