@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Float, BigInteger, UniqueConstraint, Enum as SQLEnum, text
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Float, BigInteger, Index, UniqueConstraint, Enum as SQLEnum, text
 from sqlalchemy.orm import relationship
 from app.database import Base
 from datetime import datetime
@@ -159,6 +159,15 @@ class AccessCredential(Base):
     deactivated_at = Column(DateTime, nullable=True)
 
     user = relationship("User", foreign_keys=[user_id])
+
+    __table_args__ = (
+        Index(
+            "unique_active_nfc_card_per_user",
+            "user_id",
+            unique=True,
+            postgresql_where=text("type = 'NFC_CARD' AND is_active = TRUE")
+        ),
+    )
 
 class PushToken(Base):
     __tablename__ = "push_tokens"

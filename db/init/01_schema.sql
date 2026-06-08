@@ -206,6 +206,10 @@ CREATE TABLE access_credentials (
     deactivated_at TIMESTAMP
 );
 
+CREATE UNIQUE INDEX unique_active_nfc_card_per_user
+ON access_credentials(user_id)
+WHERE type = 'NFC_CARD' AND is_active = TRUE;
+
 -- logi użycia identyfikatorów
 CREATE TABLE access_logs (
     id SERIAL PRIMARY KEY,

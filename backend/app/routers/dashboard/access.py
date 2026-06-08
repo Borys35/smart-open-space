@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 from app.dependencies import get_db, require_roles
 from app.models import AccessCredential, AccessDevice, AccessLog, Membership, OpenSpace, OpenSpaceManager, User
 from app.schemas import (
-    AccessCredentialCreate,
     AccessCredentialResponse,
     AccessDeviceCreate,
     AccessDeviceResponse,
@@ -181,34 +180,6 @@ def update_access_device(
     db.refresh(device)
 
     return serialize_access_device(device)
-
-@router.post("/users/{user_id}/access-credentials", response_model=AccessCredentialResponse, status_code=201)
-def create_access_credential(
-    user_id: int,
-    data: AccessCredentialCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["SUPER_ADMIN", "MANAGER"]))
-):
-    ensure_can_manage_user(db, user_id, current_user)
-
-    new_credential = AccessCredential(
-        user_id=user_id,
-        type=data.type,
-        uid=data.uid,
-        is_active=True
-    )
-
-    db.add(new_credential)
-
-    try:
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(status_code=400, detail="Access credential UID already exists")
-
-    db.refresh(new_credential)
-
-    return serialize_access_credential(new_credential)
 
 @router.get("/users/{user_id}/access-credentials", response_model=list[AccessCredentialResponse])
 def get_user_access_credentials(
