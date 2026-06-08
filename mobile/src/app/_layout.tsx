@@ -1,7 +1,7 @@
 import "@/setup/notifications";
 import { NotificationsHandler } from "@/components/notifications";
 import { useAuth } from "@/hooks/use-auth";
-import { ModalProvider } from "@ssobkowski/rnui";
+import { ModalProvider } from "@ssobkowski/rnui/modal";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router/stack";
 import { useState } from "react";

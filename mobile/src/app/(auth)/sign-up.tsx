@@ -1,7 +1,8 @@
 import { useAuth } from "@/hooks/use-auth";
 import { validateSignUp } from "@/lib/auth-validation";
 import { AuthFormScreen, AuthTextInput } from "@/pages/auth/auth-form";
-import { Button, Text } from "@ssobkowski/rnui";
+import { Button } from "@ssobkowski/rnui/button";
+import { Text } from "@ssobkowski/rnui/text";
 import { useRouter } from "expo-router";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, View } from "react-native";

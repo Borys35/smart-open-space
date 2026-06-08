@@ -22,7 +22,9 @@ import {
   type Marker,
 } from "@/pages/open-spaces/reservation-modal/time-step-utils";
 import { useReservationPreferencesStore } from "@/stores/reservation-preferences";
-import { Button, ModalHeader, ModalStepView, Text } from "@ssobkowski/rnui";
+import { Button } from "@ssobkowski/rnui/button";
+import { ModalHeader, ModalStepView } from "@ssobkowski/rnui/modal";
+import { Text } from "@ssobkowski/rnui/text";
 import { useEffect, useMemo, useState } from "react";
 import { Gesture } from "react-native-gesture-handler";
 import { useDerivedValue, useSharedValue } from "react-native-reanimated";

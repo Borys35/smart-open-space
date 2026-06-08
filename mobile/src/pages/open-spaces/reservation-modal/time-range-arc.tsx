@@ -1,6 +1,6 @@
 import { ARC_HEIGHT, formatTime } from "@/pages/open-spaces/reservation-modal/time-step-utils";
 import { Canvas, Circle, LinearGradient, Path, vec } from "@shopify/react-native-skia";
-import { Text } from "@ssobkowski/rnui";
+import { Text } from "@ssobkowski/rnui/text";
 import { View } from "react-native";
 import { GestureDetector } from "react-native-gesture-handler";
 import { StyleSheet } from "react-native-unistyles";

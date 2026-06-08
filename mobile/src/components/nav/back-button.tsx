@@ -1,4 +1,5 @@
-import { Button, ChevronLeftIcon } from "@ssobkowski/rnui";
+import { Button } from "@ssobkowski/rnui/button";
+import { ChevronLeftIcon } from "@ssobkowski/rnui/icons";
 import { useRouter } from "expo-router";
 import { StyleSheet } from "react-native-unistyles";
 

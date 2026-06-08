@@ -1,14 +1,17 @@
 import { formatOrdinal } from "@/lib/fmt";
 import { DEFAULT_OPEN_SPACE_IMAGE_URL } from "@/lib/open-space-images";
 import { ReservationDetailsModal } from "@/pages/reservations/modal";
-import { Button, ClockIconStroke, Skeleton, Text } from "@ssobkowski/rnui";
+import { Button } from "@ssobkowski/rnui/button";
+import { ClockIconStroke } from "@ssobkowski/rnui/icons";
+import { Skeleton } from "@ssobkowski/rnui/skeleton";
+import { Text } from "@ssobkowski/rnui/text";
 import { Image } from "expo-image";
 import { useRef } from "react";
 import { View } from "react-native";
 import { StyleSheet, useUnistyles } from "react-native-unistyles";
 
 import type { ReservationResponse } from "@/hooks/use-open-spaces";
-import type { ModalRef } from "@ssobkowski/rnui";
+import type { ModalRef } from "@ssobkowski/rnui/modal";
 
 const INTL_DTF_DAY = new Intl.DateTimeFormat("en", {
   month: "short",

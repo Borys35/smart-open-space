@@ -1,4 +1,5 @@
-import { Button, Text } from "@ssobkowski/rnui";
+import { Button } from "@ssobkowski/rnui/button";
+import { Text } from "@ssobkowski/rnui/text";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useState } from "react";

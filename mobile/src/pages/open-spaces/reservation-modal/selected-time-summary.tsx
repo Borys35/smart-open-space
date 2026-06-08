@@ -1,4 +1,4 @@
-import { Text } from "@ssobkowski/rnui";
+import { Text } from "@ssobkowski/rnui/text";
 import { TextInput, View } from "react-native";
 import Animated, { useAnimatedProps } from "react-native-reanimated";
 import { StyleSheet } from "react-native-unistyles";

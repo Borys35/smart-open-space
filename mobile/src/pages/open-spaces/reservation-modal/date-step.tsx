@@ -4,7 +4,10 @@ import {
   clampReservationDate,
   useReservationPreferencesStore,
 } from "@/stores/reservation-preferences";
-import { Button, ModalHeader, ModalStepView, Skeleton, Text } from "@ssobkowski/rnui";
+import { Button } from "@ssobkowski/rnui/button";
+import { ModalHeader, ModalStepView } from "@ssobkowski/rnui/modal";
+import { Skeleton } from "@ssobkowski/rnui/skeleton";
+import { Text } from "@ssobkowski/rnui/text";
 import { useEffect, useMemo, useState } from "react";
 import { View } from "react-native";
 import { FadeIn, FadeOut } from "react-native-reanimated";

@@ -1,5 +1,5 @@
 import { BackButton } from "@/components/nav/back-button";
-import { Text } from "@ssobkowski/rnui";
+import { Text } from "@ssobkowski/rnui/text";
 import { ScrollView, TextInput, View } from "react-native";
 import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
 import Animated, {

@@ -1,5 +1,6 @@
 import { formatTime } from "@/pages/open-spaces/reservation-modal/time-step-utils";
-import { Button, Text } from "@ssobkowski/rnui";
+import { Button } from "@ssobkowski/rnui/button";
+import { Text } from "@ssobkowski/rnui/text";
 import { View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 

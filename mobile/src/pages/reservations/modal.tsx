@@ -1,17 +1,12 @@
-import {
-  Button,
-  ClockIconStroke,
-  MapPinStroke,
-  Modal,
-  ModalHeader,
-  ModalView,
-  Text,
-} from "@ssobkowski/rnui";
+import { Button } from "@ssobkowski/rnui/button";
+import { ClockIconStroke, MapPinStroke } from "@ssobkowski/rnui/icons";
+import { Modal, ModalHeader, ModalView } from "@ssobkowski/rnui/modal";
+import { Text } from "@ssobkowski/rnui/text";
 import { View } from "react-native";
 import { StyleSheet, useUnistyles } from "react-native-unistyles";
 
 import type { ReservationResponse } from "@/hooks/use-open-spaces";
-import type { ModalRef } from "@ssobkowski/rnui";
+import type { ModalRef } from "@ssobkowski/rnui/modal";
 import type { Ref } from "react";
 
 const INTL_DTF_DAY = new Intl.DateTimeFormat("en", {

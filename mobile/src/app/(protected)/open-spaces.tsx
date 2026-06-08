@@ -1,7 +1,8 @@
 import { useAuth } from "@/hooks/use-auth";
 import { useOpenSpaces } from "@/hooks/use-open-spaces";
 import { OpenSpaceCard, OpenSpaceCardSkeleton } from "@/pages/open-spaces/card";
-import { Button, Text } from "@ssobkowski/rnui";
+import { Button } from "@ssobkowski/rnui/button";
+import { Text } from "@ssobkowski/rnui/text";
 import { ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StyleSheet } from "react-native-unistyles";

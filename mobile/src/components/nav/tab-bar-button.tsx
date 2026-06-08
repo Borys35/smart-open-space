@@ -1,13 +1,13 @@
+import { Button } from "@ssobkowski/rnui/button";
 import {
-  Button,
-  Text,
-  HomeIconFilled,
-  HomeIconStroke,
   CalendarIconFilled,
   CalendarIconStroke,
   FlatMapPinFilled,
   FlatMapPinStroke,
-} from "@ssobkowski/rnui";
+  HomeIconFilled,
+  HomeIconStroke,
+} from "@ssobkowski/rnui/icons";
+import { Text } from "@ssobkowski/rnui/text";
 import { View } from "react-native";
 import { StyleSheet, useUnistyles } from "react-native-unistyles";
 

@@ -8,7 +8,10 @@ import {
 } from "@/hooks/use-open-spaces";
 import { DEFAULT_OPEN_SPACE_IMAGE_URL } from "@/lib/open-space-images";
 import { ReservationModal } from "@/pages/open-spaces/reservation-modal";
-import { Button, ClockIconStroke, MapPinStroke, Skeleton, Text } from "@ssobkowski/rnui";
+import { Button } from "@ssobkowski/rnui/button";
+import { ClockIconStroke, MapPinStroke } from "@ssobkowski/rnui/icons";
+import { Skeleton } from "@ssobkowski/rnui/skeleton";
+import { Text } from "@ssobkowski/rnui/text";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import { useMemo, useRef, useState } from "react";
@@ -17,7 +20,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useUnistyles } from "react-native-unistyles";
 
 import type { ReservationTimeSelection } from "@/pages/open-spaces/reservation-modal/time-step";
-import type { ModalRef } from "@ssobkowski/rnui";
+import type { ModalRef } from "@ssobkowski/rnui/modal";
 
 function parseOpenSpaceId(id: string | string[] | undefined) {
   const rawId = Array.isArray(id) ? id[0] : id;

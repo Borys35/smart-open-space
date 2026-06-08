@@ -6,11 +6,11 @@ import {
   ReservationTimeStep,
   type ReservationTimeSelection,
 } from "@/pages/open-spaces/reservation-modal/time-step";
-import { Modal, useModal } from "@ssobkowski/rnui";
+import { Modal, useModal } from "@ssobkowski/rnui/modal";
 import { useState } from "react";
 
 import type { DeskAvailability } from "@/hooks/use-open-spaces";
-import type { ModalRef } from "@ssobkowski/rnui";
+import type { ModalRef } from "@ssobkowski/rnui/modal";
 import type { Ref } from "react";
 
 interface ReservationModalProps {
