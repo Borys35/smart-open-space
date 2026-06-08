@@ -39,6 +39,8 @@ class OpenSpace(Base):
     closed_at = Column(DateTime, nullable=True)
     credits_per_hour = Column(Integer, default=1, nullable=False)
     max_daily_hours = Column(Integer, default=8, nullable=False)
+    late_checkout_penalty_hours = Column(Integer, nullable=True)
+    no_show_penalty_hours = Column(Integer, nullable=True)
     period_credits = Column(Integer, default=80, nullable=False)
     credit_reset_period = Column(
         SQLEnum("WEEKLY", "MONTHLY", name="credit_reset_period_enum", create_type=False),
@@ -119,6 +121,7 @@ class Membership(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     open_space_id = Column(Integer, ForeignKey("open_spaces.id"), nullable=False)
     credits_balance = Column(Integer, default=0, nullable=False)
+    pending_penalty_credits = Column(Integer, default=0, nullable=False)
     status = Column(
         SQLEnum("ACTIVE", "BLOCKED", "LEFT", name="membership_status", create_type=False),
         default="ACTIVE",
@@ -193,13 +196,17 @@ class Reservation(Base):
     start_time = Column(DateTime, nullable=False)
     end_time = Column(DateTime, nullable=False)
     credit_cost = Column(Integer, nullable=False)
+    late_checkout_penalty_cost = Column(Integer, default=0, nullable=False)
+    no_show_penalty_cost = Column(Integer, default=0, nullable=False)
     status = Column(
-        SQLEnum("PENDING", "CONFIRMED", "CANCELLED", "DONE", name="reservation_status", create_type=False),
+        SQLEnum("PENDING", "CONFIRMED", "CANCELLED", "DONE", "NO_SHOW", name="reservation_status", create_type=False),
         default="CONFIRMED",
         nullable=False
     )
     checked_in_at = Column(DateTime, nullable=True)
     checked_out_at = Column(DateTime, nullable=True)
+    late_checkout_penalty_applied_at = Column(DateTime, nullable=True)
+    no_show_penalty_applied_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
@@ -214,7 +221,7 @@ class CreditTransaction(Base):
     membership_id = Column(Integer, ForeignKey("memberships.id"), nullable=False)
     amount = Column(Integer, nullable=False)
     type = Column(
-        SQLEnum("TOP_UP", "RESERVATION_CHARGE", "REFUND", "MANUAL_ADJUSTMENT", name="credit_transaction_type", create_type=False),
+        SQLEnum("TOP_UP", "RESERVATION_CHARGE", "REFUND", "MANUAL_ADJUSTMENT", "LATE_CHECKOUT_PENALTY", "NO_SHOW_PENALTY", name="credit_transaction_type", create_type=False),
         nullable=False
     )
     description = Column(String(255), nullable=True)

@@ -18,6 +18,7 @@ from app.schemas import (
 
 router = APIRouter(prefix="/api/reservations", tags=["mobile-reservations"])
 desks_router = APIRouter(prefix="/api/desks", tags=["mobile-desks"])
+FINISHED_RESERVATION_STATUSES = ["CANCELLED", "DONE", "NO_SHOW"]
 
 def serialize_reservation(reservation: Reservation):
     return {
@@ -26,6 +27,8 @@ def serialize_reservation(reservation: Reservation):
         "start_time": reservation.start_time,
         "end_time": reservation.end_time,
         "credit_cost": reservation.credit_cost,
+        "late_checkout_penalty_cost": reservation.late_checkout_penalty_cost,
+        "no_show_penalty_cost": reservation.no_show_penalty_cost,
         "status": reservation.status
     }
 
@@ -62,7 +65,7 @@ def get_desk_available_windows(
 ):
     reservations = db.query(Reservation).filter(
         Reservation.desk_id == desk_id,
-        Reservation.status.notin_(["CANCELLED", "DONE"]),
+        Reservation.status.notin_(FINISHED_RESERVATION_STATUSES),
         Reservation.end_time > day_start,
         Reservation.start_time < day_end
     ).order_by(Reservation.start_time.asc()).all()
@@ -136,7 +139,7 @@ def create_reservation(
     
     conflict_reservation = db.query(Reservation).filter(
         Reservation.desk_id == data.desk_id,
-        Reservation.status.notin_(["CANCELLED", "DONE"]),
+        Reservation.status.notin_(FINISHED_RESERVATION_STATUSES),
         data.end_time > Reservation.start_time,
         data.start_time < Reservation.end_time
     ).first()
@@ -146,7 +149,7 @@ def create_reservation(
 
     user_conflict_reservation = db.query(Reservation).filter(
         Reservation.user_id == current_user.id,
-        Reservation.status.notin_(["CANCELLED", "DONE"]),
+        Reservation.status.notin_(FINISHED_RESERVATION_STATUSES),
         data.end_time > Reservation.start_time,
         data.start_time < Reservation.end_time
     ).first()
@@ -259,7 +262,7 @@ def quote_reservation(
         else:
             conflict_reservation = db.query(Reservation).filter(
                 Reservation.desk_id == data.desk_id,
-                Reservation.status.notin_(["CANCELLED", "DONE"]),
+                Reservation.status.notin_(FINISHED_RESERVATION_STATUSES),
                 data.end_time > Reservation.start_time,
                 data.start_time < Reservation.end_time
             ).first()
@@ -270,7 +273,7 @@ def quote_reservation(
 
             user_conflict_reservation = db.query(Reservation).filter(
                 Reservation.user_id == current_user.id,
-                Reservation.status.notin_(["CANCELLED", "DONE"]),
+                Reservation.status.notin_(FINISHED_RESERVATION_STATUSES),
                 data.end_time > Reservation.start_time,
                 data.start_time < Reservation.end_time
             ).first()
@@ -305,7 +308,7 @@ def cancel_reservation(
     if reservation.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="This is not your reservation")
     
-    if reservation.status in ["CANCELLED", "DONE"]:
+    if reservation.status in FINISHED_RESERVATION_STATUSES:
         raise HTTPException(status_code=400, detail="Reservation cannot be cancelled")
     
     membership = db.query(Membership).filter(Membership.id == reservation.membership_id).first()
@@ -345,7 +348,7 @@ def update_reservation_time(
     if reservation.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="This is not your reservation")
 
-    if reservation.status in ["CANCELLED", "DONE"]:
+    if reservation.status in FINISHED_RESERVATION_STATUSES:
         raise HTTPException(status_code=400, detail="Reservation time cannot be changed")
 
     if data.end_time <= data.start_time:
@@ -371,7 +374,7 @@ def update_reservation_time(
     conflict_reservation = db.query(Reservation).filter(
         Reservation.id != reservation_id,
         Reservation.desk_id == reservation.desk_id,
-        Reservation.status.notin_(["CANCELLED", "DONE"]),
+        Reservation.status.notin_(FINISHED_RESERVATION_STATUSES),
         data.end_time > Reservation.start_time,
         data.start_time < Reservation.end_time
     ).first()
@@ -382,7 +385,7 @@ def update_reservation_time(
     user_conflict_reservation = db.query(Reservation).filter(
         Reservation.id != reservation_id,
         Reservation.user_id == current_user.id,
-        Reservation.status.notin_(["CANCELLED", "DONE"]),
+        Reservation.status.notin_(FINISHED_RESERVATION_STATUSES),
         data.end_time > Reservation.start_time,
         data.start_time < Reservation.end_time
     ).first()
@@ -474,7 +477,7 @@ def get_desk_availability(
 
     conflicting_reservations = db.query(Reservation).filter(
         Reservation.desk_id.in_(desk_ids),
-        Reservation.status.notin_(["CANCELLED", "DONE"]),
+        Reservation.status.notin_(FINISHED_RESERVATION_STATUSES),
         start_time < Reservation.end_time,
         end_time > Reservation.start_time
     ).all()

@@ -74,7 +74,8 @@ def get_my_open_space_credits(
 
     return {
         "open_space_id": open_space_id,
-        "credits_balance": membership.credits_balance
+        "credits_balance": membership.credits_balance,
+        "pending_penalty_credits": membership.pending_penalty_credits
     }
 
 @router.get("/{open_space_id}/desks/availability-summary", response_model=OpenSpaceDeskAvailabilitySummaryResponse)

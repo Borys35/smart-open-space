@@ -31,9 +31,17 @@ def reset_expired_open_space_credits(db):
         
         for membership in memberships:
             old_balance = membership.credits_balance
-            membership.credits_balance = open_space.period_credits
+            old_pending_penalty = membership.pending_penalty_credits
+            new_balance = open_space.period_credits - old_pending_penalty
 
-            amount = open_space.period_credits - old_balance
+            if new_balance >= 0:
+                membership.credits_balance = new_balance
+                membership.pending_penalty_credits = 0
+            else:
+                membership.credits_balance = 0
+                membership.pending_penalty_credits = abs(new_balance)
+
+            amount = membership.credits_balance - old_balance
         
             if amount != 0:
                 new_transaction = CreditTransaction(

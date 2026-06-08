@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.dependencies import get_db
@@ -14,6 +15,7 @@ from app.models import (
     Reservation,
 )
 from app.schemas import SensorAccessCheckRequest, SensorAccessCheckResponse
+from app.services.penalty_service import apply_late_checkout_penalty
 
 router = APIRouter(prefix="/api/sensor/access", tags=["sensor-access"])
 
@@ -100,8 +102,16 @@ def check_access(
             Reservation.user_id == credential.user_id,
             Desk.open_space_id == device.open_space_id,
             Reservation.status == "CONFIRMED",
-            Reservation.start_time <= now,
-            Reservation.end_time >= now
+            or_(
+                (
+                    (Reservation.start_time <= now)
+                    & (Reservation.end_time >= now)
+                ),
+                (
+                    (Reservation.checked_in_at != None)
+                    & (Reservation.checked_out_at == None)
+                )
+            )
         )
         .all()
     )
@@ -134,6 +144,7 @@ def check_access(
     else:
         action = "CHECK_OUT"
         reservation.checked_out_at = now
+        apply_late_checkout_penalty(db, reservation, membership, open_space, now)
         reservation.status = "DONE"
 
     reservation.updated_at = now

@@ -8,7 +8,7 @@ CREATE TYPE desk_status AS ENUM ('AVAILABLE', 'MAINTENANCE', 'INACTIVE');
 CREATE TYPE role_enum AS ENUM ('SUPER_ADMIN', 'MANAGER', 'USER');
 
 -- status rezerwacji
-CREATE TYPE reservation_status AS ENUM ('PENDING', 'CONFIRMED', 'CANCELLED', 'DONE');
+CREATE TYPE reservation_status AS ENUM ('PENDING', 'CONFIRMED', 'CANCELLED', 'DONE', 'NO_SHOW');
 
 -- status zaproszenia
 CREATE TYPE invitation_status AS ENUM ('PENDING', 'ACCEPTED', 'REJECTED', 'EXPIRED');
@@ -17,7 +17,7 @@ CREATE TYPE invitation_status AS ENUM ('PENDING', 'ACCEPTED', 'REJECTED', 'EXPIR
 CREATE TYPE membership_status AS ENUM ('ACTIVE', 'BLOCKED', 'LEFT');
 
 -- typy transakcji
-CREATE TYPE credit_transaction_type AS ENUM ('TOP_UP', 'RESERVATION_CHARGE', 'REFUND', 'MANUAL_ADJUSTMENT');
+CREATE TYPE credit_transaction_type AS ENUM ('TOP_UP', 'RESERVATION_CHARGE', 'REFUND', 'MANUAL_ADJUSTMENT', 'LATE_CHECKOUT_PENALTY', 'NO_SHOW_PENALTY');
 
 -- rodzaj identyfikatora dostępu
 CREATE TYPE access_credential_type AS ENUM ('NFC_CARD', 'PHONE');
@@ -72,6 +72,8 @@ CREATE TABLE open_spaces (
     closed_at TIMESTAMP,
     credits_per_hour int NOT NULL DEFAULT 2 CHECK (credits_per_hour > 0),
     max_daily_hours int NOT NULL DEFAULT 8 CHECK (max_daily_hours > 0),
+    late_checkout_penalty_hours int CHECK (late_checkout_penalty_hours IS NULL OR late_checkout_penalty_hours > 0),
+    no_show_penalty_hours int CHECK (no_show_penalty_hours IS NULL OR no_show_penalty_hours > 0),
     period_credits int NOT NULL DEFAULT 80 CHECK (period_credits >= 0),
     credit_reset_period credit_reset_period_enum NOT NULL DEFAULT 'WEEKLY',
     last_credit_reset_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -137,6 +139,7 @@ CREATE TABLE memberships (
     user_id int NOT NULL REFERENCES users(id),
     open_space_id int NOT NULL REFERENCES open_spaces(id),
     credits_balance int NOT NULL CHECK (credits_balance >= 0),
+    pending_penalty_credits int NOT NULL DEFAULT 0 CHECK (pending_penalty_credits >= 0),
     status membership_status NOT NULL DEFAULT 'ACTIVE',
     joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -165,9 +168,13 @@ CREATE TABLE reservations (
     start_time TIMESTAMP NOT NULL,
     end_time TIMESTAMP NOT NULL,
     credit_cost int NOT NULL,
+    late_checkout_penalty_cost int NOT NULL DEFAULT 0 CHECK (late_checkout_penalty_cost >= 0),
+    no_show_penalty_cost int NOT NULL DEFAULT 0 CHECK (no_show_penalty_cost >= 0),
     status reservation_status NOT NULL DEFAULT 'CONFIRMED',
     checked_in_at TIMESTAMP,
     checked_out_at TIMESTAMP,
+    late_checkout_penalty_applied_at TIMESTAMP,
+    no_show_penalty_applied_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 

@@ -35,7 +35,7 @@ def get_open_space_reservations(
     if sort not in allowed_sort_values :
         raise HTTPException(status_code=400, detail="Invalid sort value")
     
-    allowed_status_values = ["PENDING", "CONFIRMED", "CANCELLED", "DONE"]
+    allowed_status_values = ["PENDING", "CONFIRMED", "CANCELLED", "DONE", "NO_SHOW"]
     if status is not None and status not in allowed_status_values:
         raise HTTPException(status_code=400, detail="Invalid reservation status")
     
@@ -112,6 +112,8 @@ def get_open_space_reservations(
             "start_time": reservation.start_time,
             "end_time": reservation.end_time,
             "credit_cost": reservation.credit_cost,
+            "late_checkout_penalty_cost": reservation.late_checkout_penalty_cost,
+            "no_show_penalty_cost": reservation.no_show_penalty_cost,
             "status": reservation.status
         })
 
@@ -169,6 +171,10 @@ def get_reservation_details(
         "start_time": reservation.start_time,
         "end_time": reservation.end_time,
         "credit_cost": reservation.credit_cost,
+        "late_checkout_penalty_cost": reservation.late_checkout_penalty_cost,
+        "no_show_penalty_cost": reservation.no_show_penalty_cost,
+        "late_checkout_penalty_applied_at": reservation.late_checkout_penalty_applied_at,
+        "no_show_penalty_applied_at": reservation.no_show_penalty_applied_at,
         "status": reservation.status,
         "checked_in_at": reservation.checked_in_at,
         "checked_out_at": reservation.checked_out_at,
@@ -211,7 +217,7 @@ def cancel_reservation_by_manager(
     
     reservation, desk = row
 
-    not_cancellable_statuses = ["CANCELLED", "DONE"]
+    not_cancellable_statuses = ["CANCELLED", "DONE", "NO_SHOW"]
 
     if reservation.status in not_cancellable_statuses:
         raise HTTPException(status_code=400, detail="Reservation cannot be cancelled")

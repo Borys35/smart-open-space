@@ -89,6 +89,8 @@ class DashboardOpenSpaceCreate(BaseModel):
     image_url: str | None = None
     opened_at: datetime | None = None
     closed_at: datetime | None = None
+    late_checkout_penalty_hours: int | None = None
+    no_show_penalty_hours: int | None = None
 
     @field_validator("name")
     @classmethod
@@ -122,6 +124,17 @@ class DashboardOpenSpaceCreate(BaseModel):
         if value < 0:
             raise ValueError("Floor cannot be negative")
         
+        return value
+
+    @field_validator("late_checkout_penalty_hours", "no_show_penalty_hours")
+    @classmethod
+    def validate_penalty_hours(cls, value) -> int | None:
+        if value is None:
+            return value
+
+        if value <= 0:
+            raise ValueError("Penalty hours must be greater than 0")
+
         return value
     
     @field_validator("latitude")
@@ -173,6 +186,8 @@ class DashboardOpenSpaceResponse(BaseModel):
     closed_at: datetime | None = None
     credits_per_hour: int
     max_daily_hours: int
+    late_checkout_penalty_hours: int | None = None
+    no_show_penalty_hours: int | None = None
     period_credits: int
     credit_reset_period: str
 
@@ -456,6 +471,8 @@ class ReservationResponse(BaseModel):
     start_time: datetime
     end_time: datetime
     credit_cost: int
+    late_checkout_penalty_cost: int = 0
+    no_show_penalty_cost: int = 0
     status: str
 
 class OpenSpaceSettingsUpdate(BaseModel):
@@ -471,6 +488,8 @@ class OpenSpaceSettingsUpdate(BaseModel):
     closed_at: datetime | None = None
     credits_per_hour: int
     max_daily_hours: int
+    late_checkout_penalty_hours: int | None = None
+    no_show_penalty_hours: int | None = None
     period_credits: int
     credit_reset_period: str
 
@@ -554,6 +573,17 @@ class OpenSpaceSettingsUpdate(BaseModel):
         if value < 0:
             raise ValueError("Period credits cannot be negative")
         
+        return value
+
+    @field_validator("late_checkout_penalty_hours", "no_show_penalty_hours")
+    @classmethod
+    def validate_settings_penalty_hours(cls, value) -> int | None:
+        if value is None:
+            return value
+
+        if value <= 0:
+            raise ValueError("Penalty hours must be greater than 0")
+
         return value
     
     @field_validator("credit_reset_period")
@@ -650,6 +680,8 @@ class DashboardReservationResponse(BaseModel):
     start_time: datetime
     end_time: datetime
     credit_cost: int
+    late_checkout_penalty_cost: int = 0
+    no_show_penalty_cost: int = 0
     status: str
 
 class DashboardReservationsPageResponse(BaseModel):
@@ -668,6 +700,10 @@ class DashboardReservationDetailsResponse(BaseModel):
     start_time: datetime
     end_time: datetime
     credit_cost: int
+    late_checkout_penalty_cost: int = 0
+    no_show_penalty_cost: int = 0
+    late_checkout_penalty_applied_at: datetime | None = None
+    no_show_penalty_applied_at: datetime | None = None
     status: str
     checked_in_at: datetime | None = None
     checked_out_at: datetime | None = None
@@ -680,6 +716,7 @@ class DashboardOpenSpaceUserResponse(BaseModel):
     role: str
     membership_status: str | None = None
     credits_balance: int | None = None
+    pending_penalty_credits: int | None = None
 
 class MobileOpenSpaceSummary(BaseModel):
     id: int
@@ -697,6 +734,7 @@ class MobileOpenSpaceSummary(BaseModel):
 class MobileOpenSpaceCreditsResponse(BaseModel):
     open_space_id: int
     credits_balance: int
+    pending_penalty_credits: int
 
 class InviteResponse(BaseModel):
     id: int 

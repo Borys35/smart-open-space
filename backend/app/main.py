@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal, engine, Base
 from app.models import User, Role
 from app.services.credit_reset_service import reset_expired_open_space_credits
+from app.services.penalty_service import apply_no_show_penalties
 
 from app.routers import auth
 from app.routers.dashboard import open_spaces as dashboard_open_spaces
@@ -41,15 +42,17 @@ app.include_router(mobile_open_spaces.router)
 app.include_router(mobile_access_credentials.router)
 app.include_router(sensor_access.router)
 
-def credit_reset_loop():
+def scheduled_jobs_loop():
     while True:
         db = SessionLocal()
 
         try:
+            apply_no_show_penalties(db)
             reset_expired_open_space_credits(db)
+            db.commit()
         except Exception:
             db.rollback()
-            logger.exception("Credit reset loop failed")
+            logger.exception("Scheduled jobs loop failed")
         finally: 
             db.close()
 
@@ -76,7 +79,7 @@ def on_startup():
     finally:
         db.close()
 
-    threading.Thread(target=credit_reset_loop, daemon=True).start()
+    threading.Thread(target=scheduled_jobs_loop, daemon=True).start()
 
 def get_db():
     db = SessionLocal()
