@@ -147,6 +147,24 @@ const data = {
         // },
       ],
     },
+    {
+      title: "Access",
+      url: "#",
+      icon: (
+        <Settings2Icon
+        />
+      ),
+      items: [
+        {
+          title: "All Devices",
+          url: "/access/devices",
+        },
+        {
+          title: "Add Device",
+          url: "/access/add-device",
+        },
+      ],
+    }
   ],
   projects: [
     {
