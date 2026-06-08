@@ -3,7 +3,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.dependencies import get_db, require_roles
+from app.dependencies import get_db, is_super_admin, require_dashboard_access
 from app.models import OpenSpaceManager, User
 from app.schemas import DashboardAnalyticsResponse, DashboardHomeStatsResponse
 from app.services.dashboard_stats_service import (
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api/dashboard/open-spaces", tags=["dashboard-stats"]
 
 
 def _ensure_manager_access(db: Session, open_space_id: int, current_user: User) -> None:
-    if current_user.role.name == "SUPER_ADMIN":
+    if is_super_admin(current_user):
         return
 
     manager_assignment = db.query(OpenSpaceManager).filter(
@@ -34,7 +34,7 @@ def _ensure_manager_access(db: Session, open_space_id: int, current_user: User) 
 def get_dashboard_home_stats(
     open_space_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["SUPER_ADMIN", "MANAGER"])),
+    current_user: User = Depends(require_dashboard_access),
 ):
     try:
         open_space = get_open_space(db, open_space_id)
@@ -54,7 +54,7 @@ def get_dashboard_stats(
     date_to: datetime | None = None,
     group_by: str | None = Query(default="day"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["SUPER_ADMIN", "MANAGER"])),
+    current_user: User = Depends(require_dashboard_access),
 ):
     try:
         open_space = get_open_space(db, open_space_id)

@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
-from app.dependencies import get_db, require_roles
+from app.constants import ROLE_MANAGER, ROLE_USER, RESERVATION_STATUS_CONFIRMED
+from app.dependencies import get_db, is_super_admin, require_dashboard_access, require_roles
 from app.models import Invitation, User, OpenSpace, Desk, OpenSpaceManager, Reservation, Membership
 from app.schemas import (
     DashboardInviteResponse,
@@ -22,9 +23,9 @@ router = APIRouter(prefix="/api/dashboard/open-spaces", tags=["dashboard-open-sp
 @router.get("", response_model=list[DashboardOpenSpaceResponse])
 def get_open_spaces(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["SUPER_ADMIN", "MANAGER"]))
+    current_user: User = Depends(require_dashboard_access)
 ):
-    if current_user.role.name == "SUPER_ADMIN":
+    if is_super_admin(current_user):
         open_spaces = db.query(OpenSpace).all()
     else:
         open_spaces = (
@@ -115,14 +116,14 @@ def create_open_space(
 def get_desks_layout(
     open_space_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["SUPER_ADMIN", "MANAGER"]))
+    current_user: User = Depends(require_dashboard_access)
 ):
     open_space = db.query(OpenSpace).filter(OpenSpace.id == open_space_id).first()
 
     if not open_space:
         raise HTTPException(status_code=404, detail="Open space not found")
     
-    if current_user.role.name == "MANAGER":
+    if not is_super_admin(current_user):
         manager_assignment = db.query(OpenSpaceManager).filter(
             OpenSpaceManager.open_space_id == open_space_id,
             OpenSpaceManager.user_id == current_user.id,
@@ -150,7 +151,7 @@ def save_desks_layout(
     open_space_id: int,
     desks: list[DeskLayoutItem],
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["SUPER_ADMIN", "MANAGER"]))
+    current_user: User = Depends(require_dashboard_access)
 ):
     
     open_space = db.query(OpenSpace).filter(OpenSpace.id == open_space_id).first()
@@ -161,7 +162,7 @@ def save_desks_layout(
     if not open_space.is_active:
         raise HTTPException(status_code=400, detail="Open space is inactive")
     
-    if current_user.role.name == "MANAGER":
+    if not is_super_admin(current_user):
         manager_assignment = db.query(OpenSpaceManager).filter(
             OpenSpaceManager.open_space_id == open_space_id,
             OpenSpaceManager.user_id == current_user.id,
@@ -198,7 +199,7 @@ def update_open_space_settings(
     open_space_id: int,
     data: OpenSpaceSettingsUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["SUPER_ADMIN", "MANAGER"]))
+    current_user: User = Depends(require_dashboard_access)
 ):
     
     open_space = db.query(OpenSpace).filter(OpenSpace.id == open_space_id).first()
@@ -206,7 +207,7 @@ def update_open_space_settings(
     if not open_space:
         raise HTTPException(status_code=404, detail="Open space not found")
     
-    if current_user.role.name == "MANAGER":
+    if not is_super_admin(current_user):
         manager_assignment = db.query(OpenSpaceManager).filter(
             OpenSpaceManager.open_space_id == open_space_id,
             OpenSpaceManager.user_id == current_user.id,
@@ -265,7 +266,7 @@ def update_open_space_settings(
 def get_open_space_invites(
     open_space_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["SUPER_ADMIN", "MANAGER"])),
+    current_user: User = Depends(require_dashboard_access),
     pending_only: bool = False
 ):
     open_space = db.query(OpenSpace).filter(OpenSpace.id == open_space_id).first()
@@ -273,7 +274,7 @@ def get_open_space_invites(
     if not open_space:
         raise HTTPException(status_code=404, detail="Open space not found")
     
-    if current_user.role.name == "MANAGER":
+    if not is_super_admin(current_user):
         manager_assignment = db.query(OpenSpaceManager).filter(
             OpenSpaceManager.open_space_id == open_space_id,
             OpenSpaceManager.user_id == current_user.id,
@@ -311,7 +312,7 @@ def get_open_space_desk_availability(
     open_space_id: int,
     time: datetime | None = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["SUPER_ADMIN", "MANAGER"]))
+    current_user: User = Depends(require_dashboard_access)
 ):
     
     if time is None:
@@ -322,7 +323,7 @@ def get_open_space_desk_availability(
     if not open_space:
         raise HTTPException(status_code=404, detail="Open space not found")
     
-    if current_user.role.name == "MANAGER":
+    if not is_super_admin(current_user):
         manager_assignment = db.query(OpenSpaceManager).filter(
             OpenSpaceManager.open_space_id == open_space_id,
             OpenSpaceManager.user_id == current_user.id,
@@ -339,14 +340,14 @@ def get_open_space_desk_availability(
     for desk in desks:
         current_reservation = db.query(Reservation).filter(
             Reservation.desk_id == desk.id,
-            Reservation.status == "CONFIRMED",
+            Reservation.status == RESERVATION_STATUS_CONFIRMED,
             Reservation.start_time <= time,
             Reservation.end_time > time
         ).first()
 
         next_reservation = db.query(Reservation).filter(
             Reservation.desk_id == desk.id,
-            Reservation.status == "CONFIRMED",
+            Reservation.status == RESERVATION_STATUS_CONFIRMED,
             Reservation.start_time > time
         ).order_by(Reservation.start_time.asc()).first()
 
@@ -374,7 +375,7 @@ def get_open_space_users(
     open_space_id: int,
     role: str | None = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["SUPER_ADMIN", "MANAGER"]))
+    current_user: User = Depends(require_dashboard_access)
 ):
     
     open_space = db.query(OpenSpace).filter(OpenSpace.id == open_space_id).first()
@@ -382,7 +383,7 @@ def get_open_space_users(
     if not open_space:
         raise HTTPException(status_code=404, detail="Open space not found")
     
-    if current_user.role.name == "MANAGER":
+    if not is_super_admin(current_user):
         manager_assignment = db.query(OpenSpaceManager).filter(
             OpenSpaceManager.open_space_id == open_space_id,
             OpenSpaceManager.user_id == current_user.id,
@@ -392,7 +393,7 @@ def get_open_space_users(
         if not manager_assignment:
             raise HTTPException(status_code=403, detail="You can view users only in your assigned open space")
 
-    allowed_roles = ["USER", "MANAGER"]
+    allowed_roles = [ROLE_USER, ROLE_MANAGER]
 
     if role is not None:
         role = role.strip().upper()
@@ -402,7 +403,7 @@ def get_open_space_users(
     
     result = []
 
-    if role is None or role == "MANAGER":
+    if role is None or role == ROLE_MANAGER:
         manager_assignments = db.query(OpenSpaceManager, User).join(
             User, OpenSpaceManager.user_id == User.id
         ).filter(
@@ -415,13 +416,13 @@ def get_open_space_users(
                 "id": user.id,
                 "username": user.username,
                 "email": user.email,
-                "role": "MANAGER",
+                "role": ROLE_MANAGER,
                 "membership_status": None,
                 "credits_balance": None,
                 "pending_penalty_credits": None
             }) 
 
-    if role is None or role == "USER":
+    if role is None or role == ROLE_USER:
         memberships = db.query(Membership, User).join(
             User, Membership.user_id == User.id
         ).filter(
@@ -433,7 +434,7 @@ def get_open_space_users(
                 "id": user.id,
                 "username": user.username,
                 "email": user.email,
-                "role": "USER",
+                "role": ROLE_USER,
                 "membership_status": membership.status,
                 "credits_balance": membership.credits_balance,
                 "pending_penalty_credits": membership.pending_penalty_credits

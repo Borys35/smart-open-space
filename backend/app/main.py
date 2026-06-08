@@ -5,6 +5,7 @@ import logging
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 
+from app.constants import ROLE_MANAGER, ROLE_SUPER_ADMIN, ROLE_USER
 from app.database import SessionLocal, engine, Base
 from app.models import User, Role
 from app.services.credit_reset_service import reset_expired_open_space_credits
@@ -65,7 +66,7 @@ def on_startup():
     db = SessionLocal()
     
     try:
-        default_roles = ["USER", "MANAGER", "SUPER_ADMIN"]
+        default_roles = [ROLE_USER, ROLE_MANAGER, ROLE_SUPER_ADMIN]
 
         for x in default_roles:
             existing_role = db.query(Role).filter(Role.name == x).first()

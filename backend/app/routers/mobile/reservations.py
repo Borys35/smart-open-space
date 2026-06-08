@@ -4,6 +4,13 @@ from datetime import date, datetime, time, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session 
 
+from app.constants import (
+    CREDIT_TRANSACTION_REFUND,
+    CREDIT_TRANSACTION_RESERVATION_CHARGE,
+    FINISHED_RESERVATION_STATUSES,
+    RESERVATION_STATUS_CANCELLED,
+    RESERVATION_STATUS_CONFIRMED
+)
 from app.dependencies import get_db, get_current_user
 from app.models import User, Desk, OpenSpace, Membership, Reservation, CreditTransaction
 from app.schemas import (
@@ -18,7 +25,6 @@ from app.schemas import (
 
 router = APIRouter(prefix="/api/reservations", tags=["mobile-reservations"])
 desks_router = APIRouter(prefix="/api/desks", tags=["mobile-desks"])
-FINISHED_RESERVATION_STATUSES = ["CANCELLED", "DONE", "NO_SHOW"]
 
 def serialize_reservation(reservation: Reservation):
     return {
@@ -182,13 +188,13 @@ def create_reservation(
         start_time=data.start_time,
         end_time=data.end_time,
         credit_cost=credit_cost,
-        status="CONFIRMED"
+        status=RESERVATION_STATUS_CONFIRMED
     )
 
     new_transaction = CreditTransaction(
         membership_id=membership.id,
         amount=-credit_cost,
-        type="RESERVATION_CHARGE",
+        type=CREDIT_TRANSACTION_RESERVATION_CHARGE,
         description="Reservation charge",
         created_by=current_user.id 
     )
@@ -317,12 +323,12 @@ def cancel_reservation(
         raise HTTPException(status_code=404, detail="Membership not found")
     
     membership.credits_balance += reservation.credit_cost
-    reservation.status = "CANCELLED"
+    reservation.status = RESERVATION_STATUS_CANCELLED
 
     refund_transaction = CreditTransaction(
         membership_id=membership.id,
         amount=reservation.credit_cost,
-        type="REFUND",
+        type=CREDIT_TRANSACTION_REFUND,
         description="Reservation refund",
         created_by=current_user.id
     )
@@ -413,11 +419,11 @@ def update_reservation_time(
     if credit_difference != 0:
         membership.credits_balance -= credit_difference
 
-        transaction_type = "RESERVATION_CHARGE"
+        transaction_type = CREDIT_TRANSACTION_RESERVATION_CHARGE
         description = "Reservation time change charge"
 
         if credit_difference < 0:
-            transaction_type = "REFUND"
+            transaction_type = CREDIT_TRANSACTION_REFUND
             description = "Reservation time change refund"
 
         credit_transaction = CreditTransaction(

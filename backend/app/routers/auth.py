@@ -2,10 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
-from app.models import User, Role
+from app.constants import ROLE_MANAGER, ROLE_SUPER_ADMIN, ROLE_USER
+from app.models import OpenSpaceManager, User, Role
 from app.schemas import RegisterRequest, UserResponse, LoginRequest, LoginResponse, DashboardLoginResponse 
 from app.services.auth_service import hash_password, verify_password, create_access_token
-from app.dependencies import get_db, get_current_user
+from app.dependencies import get_db, get_current_user, require_dashboard_access
 
 router = APIRouter()
 
@@ -18,7 +19,7 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
     if existing_user:
         raise HTTPException(status_code = 400, detail = "Email already exists")
     
-    user_role = db.query(Role).filter(Role.name == "USER").first()
+    user_role = db.query(Role).filter(Role.name == ROLE_USER).first()
 
     if not user_role:
         raise HTTPException(status_code = 400, detail = "Role USER does not exist")
@@ -93,10 +94,19 @@ def dashboard_login(data: LoginRequest, db: Session = Depends(get_db)):
     if not user.is_active:
         raise HTTPException(status_code = 403, detail = "User is inactive")
     
-    if user.role.name not in ["MANAGER", "SUPER_ADMIN"]:
+    has_manager_assignment = db.query(OpenSpaceManager).filter(
+        OpenSpaceManager.user_id == user.id,
+        OpenSpaceManager.is_active == True
+    ).first() is not None
+
+    if user.role.name != ROLE_SUPER_ADMIN and not has_manager_assignment:
         raise HTTPException(status_code = 403, detail = "User does not have dashboard permission")
 
     token = create_access_token(user.id)
+    dashboard_role = user.role.name
+
+    if user.role.name != ROLE_SUPER_ADMIN and has_manager_assignment:
+        dashboard_role = ROLE_MANAGER
 
     return {
         "access_token": token,
@@ -105,7 +115,7 @@ def dashboard_login(data: LoginRequest, db: Session = Depends(get_db)):
             "id": user.id,
             "username": user.username,
             "email": user.email,
-            "role": user.role.name
+            "role": dashboard_role
         }
     }
 
@@ -116,4 +126,18 @@ def get_me(current_user: User = Depends(get_current_user)):
         "username": current_user.username,
         "email": current_user.email,
         "role": current_user.role.name
+    }
+
+@router.get("/api/dashboard/me", response_model=UserResponse)
+def get_dashboard_me(current_user: User = Depends(require_dashboard_access)):
+    dashboard_role = current_user.role.name
+
+    if current_user.role.name != ROLE_SUPER_ADMIN:
+        dashboard_role = ROLE_MANAGER
+
+    return {
+        "id": current_user.id,
+        "username": current_user.username,
+        "email": current_user.email,
+        "role": dashboard_role
     }

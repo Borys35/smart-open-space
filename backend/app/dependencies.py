@@ -2,8 +2,9 @@ from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
+from app.constants import ROLE_SUPER_ADMIN
 from app.database import SessionLocal
-from app.models import User
+from app.models import OpenSpaceManager, User
 from app.services.auth_service import decode_access_token
 
 
@@ -47,3 +48,31 @@ def require_roles(allowed_roles: list[str]):
         return current_user
     
     return role_checker
+
+def is_super_admin(user: User):
+    return user.role.name == ROLE_SUPER_ADMIN
+
+def has_active_manager_assignment(db: Session, user_id: int):
+    return db.query(OpenSpaceManager).filter(
+        OpenSpaceManager.user_id == user_id,
+        OpenSpaceManager.is_active == True
+    ).first() is not None
+
+def has_open_space_manager_assignment(db: Session, user_id: int, open_space_id: int):
+    return db.query(OpenSpaceManager).filter(
+        OpenSpaceManager.open_space_id == open_space_id,
+        OpenSpaceManager.user_id == user_id,
+        OpenSpaceManager.is_active == True
+    ).first() is not None
+
+def require_dashboard_access(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if is_super_admin(current_user):
+        return current_user
+
+    if has_active_manager_assignment(db, current_user.id):
+        return current_user
+
+    raise HTTPException(status_code=403, detail="User does not have dashboard permission")

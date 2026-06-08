@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
+from app.constants import RESERVATION_STATUS_CONFIRMED, RESERVATION_STATUS_DONE
 from app.dependencies import get_db
 from app.models import (
     AccessCredential,
@@ -101,7 +102,7 @@ def check_access(
         .filter(
             Reservation.user_id == credential.user_id,
             Desk.open_space_id == device.open_space_id,
-            Reservation.status == "CONFIRMED",
+            Reservation.status == RESERVATION_STATUS_CONFIRMED,
             or_(
                 (
                     (Reservation.start_time <= now)
@@ -145,7 +146,7 @@ def check_access(
         action = "CHECK_OUT"
         reservation.checked_out_at = now
         apply_late_checkout_penalty(db, reservation, membership, open_space, now)
-        reservation.status = "DONE"
+        reservation.status = RESERVATION_STATUS_DONE
 
     reservation.updated_at = now
     create_access_log(db, credential, device, action, "SUCCESS", reservation.id)

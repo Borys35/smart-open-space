@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
-from app.dependencies import get_db, require_roles
+from app.dependencies import get_db, is_super_admin, require_dashboard_access
 from app.models import User, Invitation, OpenSpace, OpenSpaceManager, PushToken
 from app.schemas import CreateInviteRequest
 from app.services.push_service import send_push_notification
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/dashboard/invites", tags=["dashboard-invites"])
 def create_invite(
     data: CreateInviteRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["SUPER_ADMIN", "MANAGER"]))
+    current_user: User = Depends(require_dashboard_access)
 ):
     open_space = db.query(OpenSpace).filter(OpenSpace.id == data.space_id).first()
 
@@ -25,7 +25,7 @@ def create_invite(
     if not open_space.is_active:
         raise HTTPException(status_code=400, detail="Open space is inactive")
     
-    if current_user.role.name == "MANAGER":
+    if not is_super_admin(current_user):
         manager_assignment = db.query(OpenSpaceManager).filter(
             OpenSpaceManager.open_space_id == data.space_id,
             OpenSpaceManager.user_id == current_user.id,
@@ -87,14 +87,14 @@ def create_invite(
 def delete_invite(
     invite_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["SUPER_ADMIN", "MANAGER"]))
+    current_user: User = Depends(require_dashboard_access)
 ):
     invite = db.query(Invitation).filter(Invitation.id == invite_id).first()
 
     if not invite:
         raise HTTPException(status_code=404, detail="Invitation not found")
     
-    if current_user.role.name == "MANAGER":
+    if not is_super_admin(current_user):
         manager_assignment = db.query(OpenSpaceManager).filter(
             OpenSpaceManager.open_space_id == invite.open_space_id,
             OpenSpaceManager.user_id == current_user.id,

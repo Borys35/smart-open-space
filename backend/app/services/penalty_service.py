@@ -2,6 +2,12 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
+from app.constants import (
+    CREDIT_TRANSACTION_LATE_CHECKOUT_PENALTY,
+    CREDIT_TRANSACTION_NO_SHOW_PENALTY,
+    RESERVATION_STATUS_CONFIRMED,
+    RESERVATION_STATUS_NO_SHOW
+)
 from app.models import CreditTransaction, Membership, OpenSpace, Reservation
 
 def charge_penalty_credits(membership: Membership, penalty_cost: int):
@@ -42,7 +48,7 @@ def apply_late_checkout_penalty(
     penalty_transaction = CreditTransaction(
         membership_id=membership.id,
         amount=-penalty_cost,
-        type="LATE_CHECKOUT_PENALTY",
+        type=CREDIT_TRANSACTION_LATE_CHECKOUT_PENALTY,
         description=f"Late checkout penalty for reservation {reservation.id}",
         created_by=None
     )
@@ -57,7 +63,7 @@ def apply_no_show_penalties(db: Session):
         .join(Membership, Reservation.membership_id == Membership.id)
         .join(OpenSpace, Membership.open_space_id == OpenSpace.id)
         .filter(
-            Reservation.status == "CONFIRMED",
+            Reservation.status == RESERVATION_STATUS_CONFIRMED,
             Reservation.checked_in_at == None,
             Reservation.end_time < now
         )
@@ -79,12 +85,12 @@ def apply_no_show_penalties(db: Session):
             penalty_transaction = CreditTransaction(
                 membership_id=membership.id,
                 amount=-penalty_cost,
-                type="NO_SHOW_PENALTY",
+                type=CREDIT_TRANSACTION_NO_SHOW_PENALTY,
                 description=f"No-show penalty for reservation {reservation.id}",
                 created_by=None
             )
 
             db.add(penalty_transaction)
 
-        reservation.status = "NO_SHOW"
+        reservation.status = RESERVATION_STATUS_NO_SHOW
         reservation.updated_at = now

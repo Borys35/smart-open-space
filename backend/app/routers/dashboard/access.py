@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.dependencies import get_db, require_roles
+from app.dependencies import get_db, is_super_admin, require_dashboard_access
 from app.models import AccessCredential, AccessDevice, AccessLog, Membership, OpenSpace, OpenSpaceManager, User
 from app.schemas import (
     AccessCredentialResponse,
@@ -65,7 +65,7 @@ def ensure_can_manage_open_space(db: Session, open_space_id: int, current_user: 
     if not open_space:
         raise HTTPException(status_code=404, detail="Open space not found")
 
-    if current_user.role.name == "SUPER_ADMIN":
+    if is_super_admin(current_user):
         return open_space
 
     manager_assignment = db.query(OpenSpaceManager).filter(
@@ -85,7 +85,7 @@ def ensure_can_manage_user(db: Session, user_id: int, current_user: User):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    if current_user.role.name == "SUPER_ADMIN":
+    if is_super_admin(current_user):
         return user
 
     managed_membership = (
@@ -109,7 +109,7 @@ def ensure_can_manage_user(db: Session, user_id: int, current_user: User):
 def create_access_device(
     data: AccessDeviceCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["SUPER_ADMIN", "MANAGER"]))
+    current_user: User = Depends(require_dashboard_access)
 ):
     ensure_can_manage_open_space(db, data.open_space_id, current_user)
 
@@ -136,7 +136,7 @@ def create_access_device(
 def get_open_space_access_devices(
     open_space_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["SUPER_ADMIN", "MANAGER"]))
+    current_user: User = Depends(require_dashboard_access)
 ):
     ensure_can_manage_open_space(db, open_space_id, current_user)
 
@@ -151,7 +151,7 @@ def update_access_device(
     device_id: int,
     data: AccessDeviceUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["SUPER_ADMIN", "MANAGER"]))
+    current_user: User = Depends(require_dashboard_access)
 ):
     device = db.query(AccessDevice).filter(AccessDevice.id == device_id).first()
 
@@ -185,7 +185,7 @@ def update_access_device(
 def get_user_access_credentials(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["SUPER_ADMIN", "MANAGER"]))
+    current_user: User = Depends(require_dashboard_access)
 ):
     ensure_can_manage_user(db, user_id, current_user)
 
@@ -199,7 +199,7 @@ def get_user_access_credentials(
 def deactivate_access_credential(
     credential_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["SUPER_ADMIN", "MANAGER"]))
+    current_user: User = Depends(require_dashboard_access)
 ):
     credential = db.query(AccessCredential).filter(AccessCredential.id == credential_id).first()
 
@@ -222,7 +222,7 @@ def deactivate_access_credential(
 def get_open_space_access_logs(
     open_space_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["SUPER_ADMIN", "MANAGER"])),
+    current_user: User = Depends(require_dashboard_access),
     user_id: int | None = None,
     result: str | None = None,
     limit: int = 100
@@ -253,13 +253,13 @@ def get_open_space_access_logs(
 def get_user_access_stats(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["SUPER_ADMIN", "MANAGER"]))
+    current_user: User = Depends(require_dashboard_access)
 ):
     ensure_can_manage_user(db, user_id, current_user)
 
     query = db.query(AccessLog).filter(AccessLog.user_id == user_id)
 
-    if current_user.role.name == "MANAGER":
+    if not is_super_admin(current_user):
         managed_open_space_ids = [
             assignment.open_space_id for assignment in db.query(OpenSpaceManager).filter(
                 OpenSpaceManager.user_id == current_user.id,

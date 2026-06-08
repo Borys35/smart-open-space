@@ -3,7 +3,15 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 
-from app.dependencies import require_roles, get_db
+from app.constants import (
+    CREDIT_TRANSACTION_REFUND,
+    RESERVATION_STATUS_CANCELLED,
+    RESERVATION_STATUS_CONFIRMED,
+    RESERVATION_STATUS_DONE,
+    RESERVATION_STATUS_NO_SHOW,
+    RESERVATION_STATUS_PENDING
+)
+from app.dependencies import get_db, is_super_admin, require_dashboard_access
 from app.models import User, Desk, OpenSpace, OpenSpaceManager, Reservation, Membership, CreditTransaction
 from app.schemas import DashboardReservationsPageResponse, DashboardReservationDetailsResponse
 
@@ -21,7 +29,7 @@ def get_open_space_reservations(
     user_id: int | None = None,
     desk_id: int | None = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["SUPER_ADMIN", "MANAGER"]))
+    current_user: User = Depends(require_dashboard_access)
 ):
     
     if page < 1:
@@ -35,7 +43,13 @@ def get_open_space_reservations(
     if sort not in allowed_sort_values :
         raise HTTPException(status_code=400, detail="Invalid sort value")
     
-    allowed_status_values = ["PENDING", "CONFIRMED", "CANCELLED", "DONE", "NO_SHOW"]
+    allowed_status_values = [
+        RESERVATION_STATUS_PENDING,
+        RESERVATION_STATUS_CONFIRMED,
+        RESERVATION_STATUS_CANCELLED,
+        RESERVATION_STATUS_DONE,
+        RESERVATION_STATUS_NO_SHOW
+    ]
     if status is not None and status not in allowed_status_values:
         raise HTTPException(status_code=400, detail="Invalid reservation status")
     
@@ -48,7 +62,7 @@ def get_open_space_reservations(
     if not open_space:
         raise HTTPException(status_code=404, detail="Open space not found")
 
-    if current_user.role.name == "MANAGER":
+    if not is_super_admin(current_user):
         manager_assignment = db.query(OpenSpaceManager).filter(
             OpenSpaceManager.open_space_id == open_space_id,
             OpenSpaceManager.user_id == current_user.id,
@@ -129,7 +143,7 @@ def get_reservation_details(
     open_space_id: int,
     reservation_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["SUPER_ADMIN", "MANAGER"])) 
+    current_user: User = Depends(require_dashboard_access)
 ):
     
     open_space = db.query(OpenSpace).filter(OpenSpace.id == open_space_id).first()
@@ -137,7 +151,7 @@ def get_reservation_details(
     if not open_space:
         raise HTTPException(status_code=404, detail="Open space not found")
     
-    if current_user.role.name == "MANAGER":
+    if not is_super_admin(current_user):
         manager_assignment = db.query(OpenSpaceManager).filter(
             OpenSpaceManager.open_space_id == open_space_id,
             OpenSpaceManager.user_id == current_user.id,
@@ -187,7 +201,7 @@ def cancel_reservation_by_manager(
     reservation_id: int,
     reason: str | None = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["SUPER_ADMIN", "MANAGER"]))
+    current_user: User = Depends(require_dashboard_access)
 ):
     
     open_space = db.query(OpenSpace).filter(OpenSpace.id == open_space_id).first()
@@ -195,7 +209,7 @@ def cancel_reservation_by_manager(
     if not open_space:
         raise HTTPException(status_code=404, detail="Open space not found")
     
-    if current_user.role.name == "MANAGER":
+    if not is_super_admin(current_user):
         manager_assignment = db.query(OpenSpaceManager).filter(
             OpenSpaceManager.open_space_id == open_space_id,
             OpenSpaceManager.user_id == current_user.id,
@@ -217,7 +231,7 @@ def cancel_reservation_by_manager(
     
     reservation, desk = row
 
-    not_cancellable_statuses = ["CANCELLED", "DONE", "NO_SHOW"]
+    not_cancellable_statuses = [RESERVATION_STATUS_CANCELLED, RESERVATION_STATUS_DONE, RESERVATION_STATUS_NO_SHOW]
 
     if reservation.status in not_cancellable_statuses:
         raise HTTPException(status_code=400, detail="Reservation cannot be cancelled")
@@ -228,7 +242,7 @@ def cancel_reservation_by_manager(
         raise HTTPException(status_code=404, detail="Membership not found")
     
     membership.credits_balance += reservation.credit_cost
-    reservation.status = "CANCELLED"
+    reservation.status = RESERVATION_STATUS_CANCELLED
 
     description = "Reservation cancelled by manager"
 
@@ -238,7 +252,7 @@ def cancel_reservation_by_manager(
     refund_transaction = CreditTransaction(
         membership_id=membership.id,
         amount=reservation.credit_cost,
-        type="REFUND",
+        type=CREDIT_TRANSACTION_REFUND,
         description=description,
         created_by=current_user.id
     )

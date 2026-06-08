@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 
+from app.constants import CREDIT_TRANSACTION_MANUAL_ADJUSTMENT
 from app.models import OpenSpace, Membership, CreditTransaction
 
 def should_reset_credits(open_space)->bool:
@@ -47,7 +48,7 @@ def reset_expired_open_space_credits(db):
                 new_transaction = CreditTransaction(
                     membership_id=membership.id,
                     amount=amount,
-                    type="MANUAL_ADJUSTMENT",
+                    type=CREDIT_TRANSACTION_MANUAL_ADJUSTMENT,
                     description="Periodic credit reset",
                     created_by=None
                 )
