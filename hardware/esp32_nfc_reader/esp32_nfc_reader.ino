@@ -21,6 +21,8 @@ const int ledBialy = 26;
 const int ledCzerwony = 27;
 const int buzzer = 25;
 
+const String deviceKey = "czujnik 1";
+
 void setup(void)
 {
   Serial.begin(115200);
@@ -50,7 +52,7 @@ void setup(void)
 
   // konfiguracja aktualizacji kodu bezprzewodowo (Over-The-Air)
   ArduinoOTA.setHostname("Czytnik-NFC-ESP32");
-  ArduinoOTA.setPassword("haslo123");
+  ArduinoOTA.setPassword("YOUR_OTA_PASSWORD");
   ArduinoOTA.begin();
 
   // start nfc
@@ -84,7 +86,7 @@ String sendMessage(String uidCard)
     http.addHeader("Content-Type", "application/json");
 
     // struktura JSON
-    String json = "{\"credential_uid\":\"" + uidCard + "\"}";
+    String json = "{\"device_key\":\"" + deviceKey + "\",\"credential_uid\":\"" + uidCard + "\"}";
 
     int httpResponseCode = http.POST(json);
 
