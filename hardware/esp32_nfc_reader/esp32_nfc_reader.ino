@@ -17,10 +17,9 @@ PN532_I2C pn532i2c(Wire);
 PN532 nfc(pn532i2c);
 
 // konfiguracja nfc
-const int ledBialy = 19;
-const int ledCzerwony = 18;
-const int buzzer = 17;
-
+const int ledBialy = 26;
+const int ledCzerwony = 27;
+const int buzzer = 25;
 
 void setup(void)
 {
@@ -37,10 +36,10 @@ void setup(void)
   // wm.resetSettings();
   
   Serial.println("Uruchamianie WiFiManager...");
-  // próba połączenia z zapamiętaną siecią, jeżeli się nie uda ESP32 tworzy sieć o nazwie "Czytnik_NFC"
+  // proba polaczenia z zapamietana siecia, jezeli sie nie uda ESP32 tworzy siec o nazwie "Czytnik_NFC"
   if (!wm.autoConnect("Czytnik_NFC"))
   {
-    Serial.println("Błąd połączenia. Restartowanie...");
+    Serial.println("Blad polaczenia. Restartowanie...");
     delay(3000);
     ESP.restart();
   }
@@ -51,14 +50,14 @@ void setup(void)
 
   // konfiguracja aktualizacji kodu bezprzewodowo (Over-The-Air)
   ArduinoOTA.setHostname("Czytnik-NFC-ESP32");
-  ArduinoOTA.setPassword("YOUR_OTA_PASSWORD");
+  ArduinoOTA.setPassword("haslo123");
   ArduinoOTA.begin();
 
   // start nfc
   nfc.begin();
   uint32_t versiondata = nfc.getFirmwareVersion();
   if (!versiondata)
-   {
+  {
     WebSerial.println("Nie znaleziono czytnika NFC");
   }
   else 
@@ -69,47 +68,56 @@ void setup(void)
   }
 }
 
-// funkcja wysyłająca dane do BACKEND
-int sendMessage(String uidCard) 
+// funkcja wysylajaca dane do BACKEND
+String sendMessage(String uidCard) 
 {
-  int httpResponseCode = 0;
+  String payload = "";
   
   if (WiFi.status() == WL_CONNECTED) 
   {
     HTTPClient http;
 
-    // url serwera w dockerze
-    String url = "http://192.168.0.241:8000/api/v1/auth/check-access";
+    String url = "http://192.168.0.241:8000/api/sensor/access/check";
     
     http.begin(url);
-    http.setTimeout(150);
+    http.setTimeout(500);
     http.addHeader("Content-Type", "application/json");
 
-    // Budowanie struktury payloadu: {"uid":"WARTOŚĆ_KARTY"}
-    String json = "{\"uid\":\"" + uidCard + "\"}";
+    // struktura JSON
+    String json = "{\"credential_uid\":\"" + uidCard + "\"}";
 
-    httpResponseCode = http.POST(json);
+    int httpResponseCode = http.POST(json);
 
-    WebSerial.print("Status odpowiedzi z serwera: ");
+    WebSerial.print("Status HTTP z serwera: ");
     WebSerial.println(String(httpResponseCode));
+
+    if (httpResponseCode == 200) 
+    {
+      payload = http.getString();
+    }
+    else 
+    {
+      payload = "ERROR";
+    }
+    
     http.end();
   }
-  return httpResponseCode;
+  return payload;
 }
 
 void loop(void)
- {
+{
   ArduinoOTA.handle();
 
   boolean success;
   uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 }; 
   uint8_t uidLength;
 
-  // próba odczytu karty
+  // proba odczytu karty
   success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, &uid[0], &uidLength, 50);
 
   if (success)
-   {
+  {
     String cardUID = "";
     for (uint8_t i=0; i < uidLength; i++) 
     {
@@ -120,13 +128,15 @@ void loop(void)
     WebSerial.print("Wykryto karte: ");
     WebSerial.println(cardUID);
     
-
     // przekazanie odczytanego UID do serwera
-    int serverStatus = sendMessage(cardUID);
-    // logika reakcji ESP32 na odpowiedź
-    if (serverStatus == 200 || serverStatus == 201)
-     {
-      // I: Backend potwierdził że karta ma aktywne uprawnienia w bazie danych
+    String responseJSON = sendMessage(cardUID);
+    WebSerial.print("Odpowiedz serwera: ");
+    WebSerial.println(responseJSON);
+
+    // sprawdzamy, czy w odpowiedzi znajduje sie klucz "allowed":true
+    if (responseJSON.indexOf("\"allowed\":true") != -1)
+    {
+      // backend potwierdzil, ze uzytkownik ma aktywna rezerwacje i wpuszcza go
       WebSerial.println("PRZYZNANO DOSTEP");
       digitalWrite(ledBialy, HIGH);
       digitalWrite(buzzer, HIGH);
@@ -137,8 +147,8 @@ void loop(void)
     } 
     else 
     {
-      // II: Dowolny inny status oznacza odmowę dostępu
-      WebSerial.println("NIE ROZPOZNANO KARTY");
+      // odmowa dostepu
+      WebSerial.println("ODMOWA DOSTEPU / NIE ROZPOZNANO KARTY");
       digitalWrite(ledCzerwony, HIGH);
       for(int i = 0; i < 2; i++) {
         digitalWrite(buzzer, HIGH);
