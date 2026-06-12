@@ -71,6 +71,13 @@
       "expo-web-browser",
       "expo-image",
       "expo-status-bar",
+      [
+        "react-native-nfc-manager",
+        {
+          "nfcPermission": "The app needs NFC access to scan your card.",
+          "includeNdefEntitlement": true
+        }
+      ],
       "@rnrepo/expo-config-plugin"
     ],
     "experiments": {

@@ -1,7 +1,9 @@
 import { useAuth } from "@/hooks/use-auth";
 import { useInvites, useRespondToInvite } from "@/hooks/use-invites";
+import { CardButton } from "@/pages/home/card-button";
+import { MissingCardModal } from "@/pages/home/missing-card-modal";
 import * as Notifications from "expo-notifications";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -13,6 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import type { MobileOpenSpaceSummary } from "@/hooks/use-open-spaces";
+import type { ModalRef } from "@ssobkowski/rnui/modal";
 
 function getOpenSpaceLocation(openSpace: MobileOpenSpaceSummary | null) {
   if (!openSpace) {
@@ -34,6 +37,7 @@ export default function Home() {
   const invitations = useInvites(user?.id ?? null);
   const acceptInvite = useRespondToInvite(user?.id ?? null, "accept");
   const rejectInvite = useRespondToInvite(user?.id ?? null, "reject");
+  const missingCardModalRef = useRef<ModalRef>(null);
   const isResponding = acceptInvite.isPending || rejectInvite.isPending;
 
   const handleLogout = () => {
@@ -60,6 +64,12 @@ export default function Home() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <CardButton
+        style={styles.cardButton}
+        onPress={() => missingCardModalRef.current?.present()}
+      />
+      <MissingCardModal ref={missingCardModalRef} />
+
       <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.content}>
         <Text style={styles.title}>Home</Text>
 
@@ -193,6 +203,11 @@ const styles = StyleSheet.create({
     padding: 24,
     borderRadius: 12,
     gap: 6,
+  },
+  cardButton: {
+    position: "absolute",
+    bottom: 24,
+    right: 24,
   },
   greeting: {
     fontSize: 20,

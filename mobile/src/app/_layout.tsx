@@ -32,6 +32,7 @@ function ScreenStack() {
         <Stack.Protected guard={isAuthenticated}>
           <Stack.Screen name="(protected)" />
           <Stack.Screen name="spaces/[id]" />
+          <Stack.Screen name="nfc-card" />
         </Stack.Protected>
         <Stack.Protected guard={!isAuthenticated}>
           <Stack.Screen name="(auth)" />
