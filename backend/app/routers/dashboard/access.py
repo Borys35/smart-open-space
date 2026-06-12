@@ -38,11 +38,11 @@ def serialize_access_credential(credential: AccessCredential):
     return {
         "id": credential.id,
         "user_id": credential.user_id,
-        "type": credential.type,
-        "masked_uid": mask_uid(credential.uid),
-        "is_active": credential.is_active,
-        "assigned_at": credential.assigned_at,
-        "deactivated_at": credential.deactivated_at
+        "type": credential.cred_type,
+        "masked_uid": mask_uid(credential.uid) if credential.uid else "",
+        "is_active": credential.active,
+        "assigned_at": credential.created_at,
+        "deactivated_at": None if credential.active else credential.updated_at
     }
 
 def serialize_access_log(access_log: AccessLog):
@@ -197,7 +197,7 @@ def get_user_access_credentials(
 
     credentials = db.query(AccessCredential).filter(
         AccessCredential.user_id == user_id
-    ).order_by(AccessCredential.assigned_at.desc()).all()
+    ).order_by(AccessCredential.created_at.desc()).all()
 
     return [serialize_access_credential(credential) for credential in credentials]
 
@@ -214,11 +214,11 @@ def deactivate_access_credential(
 
     ensure_can_manage_user(db, credential.user_id, current_user)
 
-    if not credential.is_active:
+    if not credential.active:
         raise HTTPException(status_code=400, detail="Access credential is already inactive")
 
-    credential.is_active = False
-    credential.deactivated_at = utc_now()
+    credential.active = False
+    credential.updated_at = utc_now()
 
     db.commit()
 

@@ -20,7 +20,7 @@ CREATE TYPE membership_status AS ENUM ('ACTIVE', 'BLOCKED', 'LEFT');
 CREATE TYPE credit_transaction_type AS ENUM ('TOP_UP', 'RESERVATION_CHARGE', 'REFUND', 'MANUAL_ADJUSTMENT', 'LATE_CHECKOUT_PENALTY', 'NO_SHOW_PENALTY');
 
 -- rodzaj identyfikatora dostępu
-CREATE TYPE access_credential_type AS ENUM ('NFC_CARD', 'PHONE');
+CREATE TYPE access_credential_type AS ENUM ('CARD', 'PHONE');
 
 -- dostępne akcje przy czytniku
 CREATE TYPE access_action AS ENUM ('CHECK_IN', 'CHECK_OUT', 'ENTRY', 'IDENTITY_VERIFICATION');
@@ -206,16 +206,45 @@ CREATE TABLE access_devices (
 CREATE TABLE access_credentials (
     id SERIAL PRIMARY KEY,
     user_id int NOT NULL REFERENCES users(id),
-    type access_credential_type NOT NULL,
-    uid varchar(100) NOT NULL UNIQUE,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    assigned_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    deactivated_at TIMESTAMPTZ
+    cred_type access_credential_type NOT NULL,
+    uid TEXT,
+    mobile_credential_id TEXT UNIQUE,
+    public_key TEXT,
+    shared_secret_hash TEXT,
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+
+    CHECK (
+        (
+            cred_type = 'CARD'
+            AND uid IS NOT NULL
+            AND mobile_credential_id IS NULL
+            AND public_key IS NULL
+            AND shared_secret_hash IS NULL
+        )
+        OR (
+            cred_type = 'PHONE'
+            AND uid IS NULL
+            AND mobile_credential_id IS NOT NULL
+            AND public_key IS NOT NULL
+            AND shared_secret_hash IS NOT NULL
+        )
+    )
 );
 
-CREATE UNIQUE INDEX unique_active_nfc_card_per_user
+CREATE UNIQUE INDEX unique_active_card_per_user
 ON access_credentials(user_id)
-WHERE type = 'NFC_CARD' AND is_active = TRUE;
+WHERE cred_type = 'CARD' AND active = TRUE;
+
+CREATE UNIQUE INDEX unique_active_card_uid
+ON access_credentials(uid)
+WHERE cred_type = 'CARD' AND active = TRUE AND uid IS NOT NULL;
+
+CREATE OR REPLACE TRIGGER tg_set_updated_at_access_credentials
+    BEFORE INSERT OR UPDATE ON access_credentials
+    FOR EACH ROW
+    EXECUTE FUNCTION set_updated_at();
 
 -- logi użycia identyfikatorów
 CREATE TABLE access_logs (

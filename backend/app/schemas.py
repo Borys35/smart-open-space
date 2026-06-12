@@ -279,19 +279,17 @@ class AccessDeviceResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-class AccessCredentialCreate(BaseModel):
+class AccessCredentialResponse(BaseModel):
+    id: int
+    user_id: int
     type: str
+    masked_uid: str
+    is_active: bool
+    assigned_at: datetime
+    deactivated_at: datetime | None = None
+
+class CardCredentialPayload(BaseModel):
     uid: str
-
-    @field_validator("type")
-    @classmethod
-    def validate_type(cls, value) -> str:
-        value = value.strip().upper()
-
-        if value not in ["NFC_CARD", "PHONE"]:
-            raise ValueError("Type must be NFC_CARD or PHONE")
-
-        return value
 
     @field_validator("uid")
     @classmethod
@@ -306,14 +304,35 @@ class AccessCredentialCreate(BaseModel):
 
         return value
 
-class AccessCredentialResponse(BaseModel):
-    id: int
-    user_id: int
-    type: str
-    masked_uid: str
-    is_active: bool
-    assigned_at: datetime
-    deactivated_at: datetime | None = None
+class CardCredentialRequest(BaseModel):
+    card: CardCredentialPayload
+
+class CardCredentialResponse(BaseModel):
+    uid: str
+    active: bool
+
+class CredentialsResponse(BaseModel):
+    card: CardCredentialResponse | None = None
+
+class MobileCredentialCreateRequest(BaseModel):
+    deviceName: str
+
+    @field_validator("deviceName")
+    @classmethod
+    def validate_device_name(cls, value) -> str:
+        value = value.strip()
+
+        if not value:
+            raise ValueError("Device name cannot be empty")
+
+        if len(value) > 255:
+            raise ValueError("Device name must be at most 255 characters long")
+
+        return value
+
+class MobileCredentialCreateResponse(BaseModel):
+    credentialId: str
+    secret: str
 
 class AccessLogResponse(BaseModel):
     id: int

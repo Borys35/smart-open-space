@@ -41,6 +41,7 @@ app.include_router(mobile_reservations.desks_router)
 app.include_router(mobile_push_tokens.router)
 app.include_router(mobile_open_spaces.router)
 app.include_router(mobile_access_credentials.router)
+app.include_router(mobile_access_credentials.mobile_credentials_router)
 app.include_router(sensor_access.router)
 
 def scheduled_jobs_loop():
@@ -100,5 +101,4 @@ def get_users(db: Session = Depends(get_db)):
 @app.get("/roles")
 def get_roles(db: Session = Depends(get_db)):
     return db.query(Role).all()
-
 
