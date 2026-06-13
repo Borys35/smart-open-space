@@ -6,6 +6,7 @@ import {
   useDeskAvailability,
   useOpenSpaceDetails,
 } from "@/hooks/use-open-spaces";
+import { formatSchedule } from "@/lib/fmt";
 import { DEFAULT_OPEN_SPACE_IMAGE_URL } from "@/lib/open-space-images";
 import { ReservationModal } from "@/pages/open-spaces/reservation-modal";
 import { Button } from "@ssobkowski/rnui/button";
@@ -59,7 +60,6 @@ function getTodayAvailabilityWindow(openSpace?: MobileOpenSpaceSummary) {
 function getLocation(openSpace: MobileOpenSpaceSummary) {
   return [
     openSpace.place_name,
-    openSpace.address,
     openSpace.building ? `Building ${openSpace.building}` : null,
     `Floor ${openSpace.floor}`,
   ]
@@ -184,29 +184,30 @@ export default function OpenSpaceDetails() {
           </View>
 
           <View style={styles.details}>
-            <View style={styles.detailRow}>
-              <ClockIconStroke
-                width={16}
-                height={16}
-                strokeWidth={2}
-                color={theme.colors.text.secondary}
-              />
-              <Text tone="text.secondary">
-                {openSpace.data.opened_at ?? "09:00"} – {openSpace.data.closed_at ?? "18:00"}
-              </Text>
-            </View>
-            <View style={styles.detailRow}>
-              <MapPinStroke
-                width={18}
-                height={18}
-                strokeWidth={2}
-                color={theme.colors.text.secondary}
-              />
-              <Text tone="text.secondary">
-                {openSpace.data.place_name ?? "D1"},{" "}
-                {openSpace.data.address ?? "Plac Grunwaldzki 13, 50-378 Wrocław"}
-              </Text>
-            </View>
+            {openSpace.data.opened_at && openSpace.data.closed_at && (
+              <View style={styles.detailRow}>
+                <ClockIconStroke
+                  width={16}
+                  height={16}
+                  strokeWidth={2}
+                  color={theme.colors.text.secondary}
+                />
+                <Text tone="text.secondary">
+                  {formatSchedule(openSpace.data.opened_at, openSpace.data.closed_at)}
+                </Text>
+              </View>
+            )}
+            {openSpace.data.address && (
+              <View style={styles.detailRow}>
+                <MapPinStroke
+                  width={18}
+                  height={18}
+                  strokeWidth={2}
+                  color={theme.colors.text.secondary}
+                />
+                <Text tone="text.secondary">{openSpace.data.address}</Text>
+              </View>
+            )}
           </View>
 
           <View style={styles.section}>
@@ -345,7 +346,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     padding: 16,
     paddingBottom: 28,
-    backgroundColor: "rgba(255, 255, 255, 0.94)",
   },
   finderButton: {
     minHeight: 54,

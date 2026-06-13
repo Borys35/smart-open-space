@@ -8,6 +8,8 @@ import {
 } from "@/pages/open-spaces/reservation-modal/time-step";
 import { Modal, useModal } from "@ssobkowski/rnui/modal";
 import { useState } from "react";
+import { View } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 
 import type { DeskAvailability } from "@/hooks/use-open-spaces";
 import type { ModalRef } from "@ssobkowski/rnui/modal";
@@ -36,21 +38,29 @@ export function ReservationModal({
   return (
     // @ts-ignore idiot
     <Modal id="reservation-modal" ref={ref}>
-      <ReservationDateStep
-        deskId={deskId}
-        deskLabel={deskLabel}
-        desks={desks}
-        onNext={(selection) => {
-          setDateSelection(selection);
-          m.goToStep(1);
-        }}
-      />
-      <ReservationTimeStep
-        windows={dateSelection?.windows ?? []}
-        deskWindows={dateSelection?.deskWindows ?? []}
-        isConfirming={isConfirming}
-        onConfirm={onConfirm}
-      />
+      <View style={styles.modal}>
+        <ReservationDateStep
+          deskId={deskId}
+          deskLabel={deskLabel}
+          desks={desks}
+          onNext={(selection) => {
+            setDateSelection(selection);
+            m.goToStep(1);
+          }}
+        />
+        <ReservationTimeStep
+          windows={dateSelection?.windows ?? []}
+          deskWindows={dateSelection?.deskWindows ?? []}
+          isConfirming={isConfirming}
+          onConfirm={onConfirm}
+        />
+      </View>
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  modal: {
+    margin: 24,
+  },
+});

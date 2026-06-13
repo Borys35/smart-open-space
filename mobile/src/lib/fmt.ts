@@ -21,3 +21,7 @@ export function formatOrdinal(floor: number) {
 export function formatReservationTime(startTime: string, endTime: string) {
   return `${INTL_DTF_DAY.format(new Date(startTime))} ${INTL_DTF_TIME.format(new Date(startTime))} - ${INTL_DTF_TIME.format(new Date(endTime))}`;
 }
+
+export function formatSchedule(open: string, close: string) {
+  return `${INTL_DTF_TIME.format(new Date(open))} - ${INTL_DTF_TIME.format(new Date(close))}`;
+}

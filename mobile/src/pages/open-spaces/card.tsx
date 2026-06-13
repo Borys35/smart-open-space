@@ -1,5 +1,5 @@
 import { useDeskAvailability } from "@/hooks/use-open-spaces";
-import { formatOrdinal } from "@/lib/fmt";
+import { formatOrdinal, formatSchedule } from "@/lib/fmt";
 import { DEFAULT_OPEN_SPACE_IMAGE_URL } from "@/lib/open-space-images";
 import { Button } from "@ssobkowski/rnui/button";
 import { ClockIconStroke, MapPinStroke } from "@ssobkowski/rnui/icons";
@@ -135,10 +135,7 @@ export function OpenSpaceCard({ openSpace }: { openSpace: MobileOpenSpaceSummary
 
   const imageUrl = openSpace.image_url ?? DEFAULT_OPEN_SPACE_IMAGE_URL;
   const hasDetails = openSpace.building !== null;
-  // const hasAddress = openSpace.address !== null && openSpace.place_name !== null;
-  const hasAddress = true;
-  // const hasSchedule = openSpace.opened_at !== null && openSpace.closed_at !== null;
-  const hasSchedule = true;
+  const hasAddress = openSpace.address !== null && openSpace.place_name !== null;
 
   const openNow = isOpenNow(openSpace);
   const openBadgeColors = openNow ? BADGE_COLORS.green : BADGE_COLORS.red;
@@ -165,12 +162,10 @@ export function OpenSpaceCard({ openSpace }: { openSpace: MobileOpenSpaceSummary
       <View style={styles.cardImage}>
         <Image source={imageUrl} style={styles.image} contentFit="cover" />
 
-        {hasSchedule && (
+        {openSpace.opened_at !== null && openSpace.closed_at !== null && (
           <View style={styles.schedulePill}>
             <ClockIconStroke width={16} height={16} strokeWidth={2} color="black" />
-            <Text color="black">
-              {openSpace.opened_at ?? "09:00"} - {openSpace.closed_at ?? "18:00"}
-            </Text>
+            <Text color="black">{formatSchedule(openSpace.opened_at, openSpace.closed_at)}</Text>
           </View>
         )}
       </View>
@@ -209,14 +204,13 @@ export function OpenSpaceCard({ openSpace }: { openSpace: MobileOpenSpaceSummary
         {hasAddress && (
           <View style={styles.rows}>
             <MapPinStroke
-              width={18}
-              height={18}
+              width={16}
+              height={16}
               strokeWidth={2}
               color={theme.colors.text.secondary}
             />
-            <Text size="lg" tone="text.secondary">
-              {openSpace.place_name ?? "D1"},{" "}
-              {openSpace.address ?? "Plac Grunwaldzki 13, 50-378 Wrocław"}
+            <Text numberOfLines={2} tone="text.secondary">
+              {openSpace.address}
             </Text>
           </View>
         )}
