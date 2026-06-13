@@ -7,7 +7,7 @@ from math import ceil
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.datetime_utils import to_utc, utc_now
+from app.datetime_utils import as_utc, to_utc, utc_now
 from app.models import AccessLog, Invitation, Membership, OpenSpace, Reservation
 
 
@@ -138,7 +138,7 @@ def _average_credit_balance(db: Session, open_space_id: int) -> tuple[float, int
 
 
 def _credit_renewal(open_space: OpenSpace) -> dict:
-    last_reset = open_space.last_credit_reset_at
+    last_reset = as_utc(open_space.last_credit_reset_at)
     if last_reset is None:
         return {
             "credit_reset_period": open_space.credit_reset_period,

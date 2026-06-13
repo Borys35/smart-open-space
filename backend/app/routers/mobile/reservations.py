@@ -11,7 +11,7 @@ from app.constants import (
     RESERVATION_STATUS_CANCELLED,
     RESERVATION_STATUS_CONFIRMED
 )
-from app.datetime_utils import as_utc, local_date_time_to_utc, to_utc, utc_now
+from app.datetime_utils import APP_TIMEZONE, as_utc, local_date_time_to_utc, to_utc, utc_now
 from app.dependencies import get_db, get_current_user
 from app.models import User, Desk, OpenSpace, Membership, Reservation, CreditTransaction
 from app.schemas import (
@@ -56,10 +56,16 @@ def get_open_space_day_range(open_space: OpenSpace, selected_date: date):
     day_end = day_start + timedelta(days=1)
 
     if open_space.opened_at is not None:
-        day_start = local_date_time_to_utc(selected_date, open_space.opened_at.time())
+        opened_at = open_space.opened_at
+        if opened_at.tzinfo is not None and opened_at.utcoffset() is not None:
+            opened_at = opened_at.astimezone(APP_TIMEZONE)
+        day_start = local_date_time_to_utc(selected_date, opened_at.time())
 
     if open_space.closed_at is not None:
-        day_end = local_date_time_to_utc(selected_date, open_space.closed_at.time())
+        closed_at = open_space.closed_at
+        if closed_at.tzinfo is not None and closed_at.utcoffset() is not None:
+            closed_at = closed_at.astimezone(APP_TIMEZONE)
+        day_end = local_date_time_to_utc(selected_date, closed_at.time())
 
         if day_end <= day_start:
             day_end += timedelta(days=1)
@@ -82,6 +88,9 @@ def get_desk_available_windows(
     day_end: datetime,
     min_duration_minutes: int
 ):
+    day_start = as_utc(day_start)
+    day_end = as_utc(day_end)
+
     reservations = db.query(Reservation).filter(
         Reservation.desk_id == desk_id,
         Reservation.status.notin_(FINISHED_RESERVATION_STATUSES),
@@ -93,8 +102,10 @@ def get_desk_available_windows(
     cursor = day_start
 
     for reservation in reservations:
+        reservation_start = as_utc(reservation.start_time)
+        reservation_end = as_utc(reservation.end_time)
         window_start = cursor
-        window_end = min(reservation.start_time, day_end)
+        window_end = min(reservation_start, day_end)
 
         if window_end > window_start:
             duration_minutes = int((window_end - window_start).total_seconds() / 60)
@@ -102,8 +113,8 @@ def get_desk_available_windows(
             if duration_minutes >= min_duration_minutes:
                 windows.append(serialize_window(window_start, window_end))
 
-        if reservation.end_time > cursor:
-            cursor = max(reservation.end_time, day_start)
+        if reservation_end > cursor:
+            cursor = max(reservation_end, day_start)
 
         if cursor >= day_end:
             break

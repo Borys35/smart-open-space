@@ -8,7 +8,7 @@ from app.constants import (
     RESERVATION_STATUS_CONFIRMED,
     RESERVATION_STATUS_NO_SHOW
 )
-from app.datetime_utils import utc_now
+from app.datetime_utils import as_utc, utc_now
 from app.models import CreditTransaction, Membership, OpenSpace, Reservation
 
 def charge_penalty_credits(membership: Membership, penalty_cost: int):
@@ -36,7 +36,7 @@ def apply_late_checkout_penalty(
     if reservation.late_checkout_penalty_applied_at is not None:
         return
 
-    if checked_out_at <= reservation.end_time:
+    if as_utc(checked_out_at) <= as_utc(reservation.end_time):
         return
 
     penalty_cost = open_space.credits_per_hour * open_space.late_checkout_penalty_hours

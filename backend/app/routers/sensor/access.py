@@ -216,7 +216,7 @@ def check_credential_access(
         )
 
     if reservation.checked_in_at is None:
-        if now >= reservation.end_time:
+        if now >= as_utc(reservation.end_time):
             create_access_log(
                 db, credential, device, "CHECK_IN", "DENIED", reservation.id
             )
