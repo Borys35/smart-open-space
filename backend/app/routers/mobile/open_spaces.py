@@ -105,7 +105,10 @@ def get_open_space_desks_availability_summary(
     if not membership:
         raise HTTPException(status_code=403, detail="You are not a member of this open space")
 
-    desks = db.query(Desk).filter(Desk.open_space_id == open_space_id).all()
+    desks = db.query(Desk).filter(
+        Desk.open_space_id == open_space_id,
+        Desk.status != "INACTIVE"
+    ).all()
     day_start, day_end = get_open_space_day_range(open_space, date)
     result = []
 

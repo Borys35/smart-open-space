@@ -134,7 +134,10 @@ def get_desks_layout(
         if not manager_assignment:
             raise HTTPException(status_code=403, detail="You can view desks only in your assigned open space")
 
-    desks = db.query(Desk).filter(Desk.open_space_id == open_space_id).all()
+    desks = db.query(Desk).filter(
+        Desk.open_space_id == open_space_id,
+        Desk.status != "INACTIVE"
+    ).all()
 
     return [
         {
@@ -173,21 +176,62 @@ def save_desks_layout(
         if not manager_assignment:
             raise HTTPException(status_code=403, detail="You can manage desks only in your assigned open space")
         
-
-    db.query(Desk).filter(Desk.open_space_id == open_space_id).delete()
+    existing_desks = db.query(Desk).filter(Desk.open_space_id == open_space_id).all()
+    existing_desks_by_id = {desk.id: desk for desk in existing_desks}
+    submitted_ids = set()
 
     for desk_data in desks:
-        new_desk = Desk(
-            #print(desk_data)
-            open_space_id = open_space_id,
-            x = desk_data.x,
-            y = desk_data.y,
-            width = desk_data.width,
-            height = desk_data.height,
-            label = desk_data.data
-        )
+        if desk_data.id is None:
+            db.add(Desk(
+                open_space_id=open_space_id,
+                x=desk_data.x,
+                y=desk_data.y,
+                width=desk_data.width,
+                height=desk_data.height,
+                label=desk_data.data
+            ))
+            continue
 
-        db.add(new_desk)
+        if desk_data.id in submitted_ids:
+            raise HTTPException(status_code=400, detail="Desk ids must be unique")
+
+        submitted_ids.add(desk_data.id)
+
+        desk = existing_desks_by_id.get(desk_data.id)
+
+        if desk is None:
+            raise HTTPException(status_code=404, detail=f"Desk {desk_data.id} not found in this open space")
+
+        desk.x = desk_data.x
+        desk.y = desk_data.y
+        desk.width = desk_data.width
+        desk.height = desk_data.height
+        desk.label = desk_data.data
+        desk.status = "AVAILABLE"
+        desk.updated_at = utc_now()
+
+    removed_desks = [
+        desk for desk in existing_desks
+        if desk.status != "INACTIVE" and desk.id not in submitted_ids
+    ]
+
+    removed_desk_ids = [desk.id for desk in removed_desks]
+    reserved_removed_desk_ids = set()
+
+    if removed_desk_ids:
+        reserved_removed_desk_ids = {
+            row[0] for row in db.query(Reservation.desk_id)
+            .filter(Reservation.desk_id.in_(removed_desk_ids))
+            .distinct()
+            .all()
+        }
+
+    for desk in removed_desks:
+        if desk.id in reserved_removed_desk_ids:
+            desk.status = "INACTIVE"
+            desk.updated_at = utc_now()
+        else:
+            db.delete(desk)
     
     db.commit()
 
@@ -336,7 +380,10 @@ def get_open_space_desk_availability(
         if not manager_assignment:
             raise HTTPException(status_code=403, detail="You can view desk availability only in your assigned open space")
     
-    desks = db.query(Desk).filter(Desk.open_space_id == open_space_id).all()
+    desks = db.query(Desk).filter(
+        Desk.open_space_id == open_space_id,
+        Desk.status != "INACTIVE"
+    ).all()
     
     result = []
 

@@ -112,6 +112,13 @@ def create_access_device(
 ):
     ensure_can_manage_open_space(db, data.open_space_id, current_user)
 
+    existing_device = db.query(AccessDevice).filter(
+        AccessDevice.open_space_id == data.open_space_id
+    ).first()
+
+    if existing_device:
+        raise HTTPException(status_code=400, detail="Open space already has an access device")
+
     new_device = AccessDevice(
         open_space_id=data.open_space_id,
         name=data.name,
@@ -125,7 +132,7 @@ def create_access_device(
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=400, detail="Access device key already exists")
+        raise HTTPException(status_code=400, detail="Access device key already exists or open space already has an access device")
 
     db.refresh(new_device)
 

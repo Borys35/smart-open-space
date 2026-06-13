@@ -194,7 +194,7 @@ ON reservations(membership_id);
 -- urządzenia dostępu
 CREATE TABLE access_devices (
     id SERIAL PRIMARY KEY,
-    open_space_id int NOT NULL REFERENCES open_spaces(id),
+    open_space_id int NOT NULL UNIQUE REFERENCES open_spaces(id),
     name varchar(100) NOT NULL,
     device_key varchar(100) NOT NULL UNIQUE,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,

@@ -141,7 +141,7 @@ class AccessDevice(Base):
     __tablename__ = "access_devices"
 
     id = Column(Integer, primary_key=True, index=True)
-    open_space_id = Column(Integer, ForeignKey("open_spaces.id"), nullable=False)
+    open_space_id = Column(Integer, ForeignKey("open_spaces.id"), nullable=False, unique=True)
     name = Column(String(100), nullable=False)
     device_key = Column(String(100), unique=True, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
