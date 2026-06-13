@@ -1,9 +1,8 @@
-from datetime import datetime
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.datetime_utils import utc_now
 from app.dependencies import get_db, is_super_admin, require_dashboard_access
 from app.models import AccessCredential, AccessDevice, AccessLog, Membership, OpenSpace, OpenSpaceManager, User
 from app.schemas import (
@@ -169,7 +168,7 @@ def update_access_device(
     if data.is_active is not None:
         device.is_active = data.is_active
 
-    device.updated_at = datetime.utcnow()
+    device.updated_at = utc_now()
 
     try:
         db.commit()
@@ -212,7 +211,7 @@ def deactivate_access_credential(
         raise HTTPException(status_code=400, detail="Access credential is already inactive")
 
     credential.is_active = False
-    credential.deactivated_at = datetime.utcnow()
+    credential.deactivated_at = utc_now()
 
     db.commit()
 

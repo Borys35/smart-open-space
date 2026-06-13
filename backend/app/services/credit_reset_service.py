@@ -1,10 +1,11 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from app.constants import CREDIT_TRANSACTION_MANUAL_ADJUSTMENT
+from app.datetime_utils import utc_now
 from app.models import OpenSpace, Membership, CreditTransaction
 
 def should_reset_credits(open_space)->bool:
-    now = datetime.utcnow()
+    now = utc_now()
 
     if open_space.last_credit_reset_at is None:
         return True
@@ -55,7 +56,7 @@ def reset_expired_open_space_credits(db):
 
                 db.add(new_transaction)
     
-        open_space.last_credit_reset_at = datetime.utcnow()
+        open_space.last_credit_reset_at = utc_now()
 
     db.commit()
 

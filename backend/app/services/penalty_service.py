@@ -8,6 +8,7 @@ from app.constants import (
     RESERVATION_STATUS_CONFIRMED,
     RESERVATION_STATUS_NO_SHOW
 )
+from app.datetime_utils import utc_now
 from app.models import CreditTransaction, Membership, OpenSpace, Reservation
 
 def charge_penalty_credits(membership: Membership, penalty_cost: int):
@@ -56,7 +57,7 @@ def apply_late_checkout_penalty(
     db.add(penalty_transaction)
 
 def apply_no_show_penalties(db: Session):
-    now = datetime.utcnow()
+    now = utc_now()
 
     rows = (
         db.query(Reservation, Membership, OpenSpace)

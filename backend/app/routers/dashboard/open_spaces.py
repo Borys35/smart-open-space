@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from app.constants import ROLE_MANAGER, ROLE_USER, RESERVATION_STATUS_CONFIRMED
+from app.datetime_utils import as_utc, to_utc, utc_now
 from app.dependencies import get_db, is_super_admin, require_dashboard_access, require_roles
 from app.models import Invitation, User, OpenSpace, Desk, OpenSpaceManager, Reservation, Membership
 from app.schemas import (
@@ -316,7 +317,9 @@ def get_open_space_desk_availability(
 ):
     
     if time is None:
-        time = datetime.utcnow()
+        time = utc_now()
+    else:
+        time = to_utc(time)
     
     open_space = db.query(OpenSpace).filter(OpenSpace.id == open_space_id).first()
     
@@ -362,8 +365,8 @@ def get_open_space_desk_availability(
             "is_occupied": current_reservation is not None,
             "next_reservation": {
                 "id": next_reservation.id,
-                "start_time": next_reservation.start_time,
-                "end_time": next_reservation.end_time,
+                "start_time": as_utc(next_reservation.start_time),
+                "end_time": as_utc(next_reservation.end_time),
                 "user_id": next_reservation.user_id
             } if next_reservation else None
         })

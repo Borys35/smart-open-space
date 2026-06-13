@@ -13,6 +13,7 @@ if __package__ is None or __package__ == "":
     sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 from app.database import SessionLocal
+from app.datetime_utils import utc_now
 from app.models import Desk, Invitation, Membership, OpenSpace, Reservation, Role, User
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -82,8 +83,8 @@ def get_or_create_open_space(
         latitude=52.2297,
         longitude=21.0122,
         image_url="https://picsum.photos/1200/800",
-        opened_at=datetime.utcnow().replace(hour=8, minute=0, second=0, microsecond=0),
-        closed_at=datetime.utcnow().replace(hour=20, minute=0, second=0, microsecond=0),
+        opened_at=utc_now().replace(hour=8, minute=0, second=0, microsecond=0),
+        closed_at=utc_now().replace(hour=20, minute=0, second=0, microsecond=0),
         credits_per_hour=2,
         max_daily_hours=8,
         period_credits=80,
@@ -204,7 +205,7 @@ def create_invitations(
             invited_email=email,
             invited_by=inviter_id,
             status="PENDING",
-            expires_at=datetime.utcnow() + timedelta(days=7),
+            expires_at=utc_now() + timedelta(days=7),
         )
         session.add(invitation)
         invitations.append(invitation)
@@ -224,7 +225,7 @@ def create_reservations(
     if not desks or not memberships or reservations_count <= 0:
         return reservations
 
-    now = datetime.utcnow()
+    now = utc_now()
     start_of_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
     start_of_tomorrow = start_of_today + timedelta(days=1)
 
@@ -317,7 +318,7 @@ def main() -> None:
 
     random.seed(args.seed)
 
-    token = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+    token = utc_now().strftime("%Y%m%d%H%M%S")
     password_hash = hash_password(args.password)
 
     session = SessionLocal()

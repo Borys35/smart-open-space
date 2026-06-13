@@ -52,8 +52,8 @@ CREATE TABLE users (
     email varchar(255) NOT NULL UNIQUE,
     password_hash varchar(100) NOT NULL,
     role_id int NOT NULL REFERENCES roles(id),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     is_active BOOLEAN NOT NULL DEFAULT TRUE
 );
 
@@ -68,17 +68,17 @@ CREATE TABLE open_spaces (
     latitude DOUBLE PRECISION,
     longitude DOUBLE PRECISION,
     image_url TEXT,
-    opened_at TIMESTAMP,
-    closed_at TIMESTAMP,
+    opened_at TIMESTAMPTZ,
+    closed_at TIMESTAMPTZ,
     credits_per_hour int NOT NULL DEFAULT 2 CHECK (credits_per_hour > 0),
     max_daily_hours int NOT NULL DEFAULT 8 CHECK (max_daily_hours > 0),
     late_checkout_penalty_hours int CHECK (late_checkout_penalty_hours IS NULL OR late_checkout_penalty_hours > 0),
     no_show_penalty_hours int CHECK (no_show_penalty_hours IS NULL OR no_show_penalty_hours > 0),
     period_credits int NOT NULL DEFAULT 80 CHECK (period_credits >= 0),
     credit_reset_period credit_reset_period_enum NOT NULL DEFAULT 'WEEKLY',
-    last_credit_reset_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_credit_reset_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
 
     UNIQUE (building, name)
@@ -90,8 +90,8 @@ CREATE TABLE open_space_managers (
     open_space_id int NOT NULL REFERENCES open_spaces(id),
     user_id int NOT NULL REFERENCES users(id),
     assigned_by int REFERENCES users(id),
-    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    unassigned_at TIMESTAMP,
+    assigned_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    unassigned_at TIMESTAMPTZ,
     is_active BOOLEAN NOT NULL DEFAULT TRUE
 );
 
@@ -110,8 +110,8 @@ CREATE TABLE desks (
     width float NOT NULL CHECK (width > 0),
     height float NOT NULL CHECK (height > 0),
     status desk_status NOT NULL DEFAULT 'AVAILABLE',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- zaproszenia
@@ -122,9 +122,9 @@ CREATE TABLE invitations (
     invited_user_id int REFERENCES users(id),
     invited_by int NOT NULL REFERENCES users(id),
     status invitation_status NOT NULL DEFAULT 'PENDING',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    responded_at TIMESTAMP,
-    expires_at TIMESTAMP NOT NULL DEFAULT (CURRENT_TIMESTAMP + INTERVAL '7 days'),
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    responded_at TIMESTAMPTZ,
+    expires_at TIMESTAMPTZ NOT NULL DEFAULT (CURRENT_TIMESTAMP + INTERVAL '7 days'),
 
     CHECK (invited_user_id IS NULL OR invited_user_id <> invited_by)
 );
@@ -141,9 +141,9 @@ CREATE TABLE memberships (
     credits_balance int NOT NULL CHECK (credits_balance >= 0),
     pending_penalty_credits int NOT NULL DEFAULT 0 CHECK (pending_penalty_credits >= 0),
     status membership_status NOT NULL DEFAULT 'ACTIVE',
-    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    joined_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 
     UNIQUE (user_id, open_space_id)
 );
@@ -156,7 +156,7 @@ CREATE TABLE credit_transactions (
     type credit_transaction_type NOT NULL,
     description varchar(255),
     created_by int REFERENCES users(id),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- rezerwacje
@@ -165,18 +165,18 @@ CREATE TABLE reservations (
     desk_id int NOT NULL REFERENCES desks(id),
     user_id int NOT NULL REFERENCES users(id),
     membership_id int NOT NULL REFERENCES memberships(id),
-    start_time TIMESTAMP NOT NULL,
-    end_time TIMESTAMP NOT NULL,
+    start_time TIMESTAMPTZ NOT NULL,
+    end_time TIMESTAMPTZ NOT NULL,
     credit_cost int NOT NULL,
     late_checkout_penalty_cost int NOT NULL DEFAULT 0 CHECK (late_checkout_penalty_cost >= 0),
     no_show_penalty_cost int NOT NULL DEFAULT 0 CHECK (no_show_penalty_cost >= 0),
     status reservation_status NOT NULL DEFAULT 'CONFIRMED',
-    checked_in_at TIMESTAMP,
-    checked_out_at TIMESTAMP,
-    late_checkout_penalty_applied_at TIMESTAMP,
-    no_show_penalty_applied_at TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    checked_in_at TIMESTAMPTZ,
+    checked_out_at TIMESTAMPTZ,
+    late_checkout_penalty_applied_at TIMESTAMPTZ,
+    no_show_penalty_applied_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 
     CHECK (end_time > start_time),
     CHECK (credit_cost >= 0)
@@ -198,8 +198,8 @@ CREATE TABLE access_devices (
     name varchar(100) NOT NULL,
     device_key varchar(100) NOT NULL UNIQUE,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- identyfikator dostępu użytkowników
@@ -209,8 +209,8 @@ CREATE TABLE access_credentials (
     type access_credential_type NOT NULL,
     uid varchar(100) NOT NULL UNIQUE,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    deactivated_at TIMESTAMP
+    assigned_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    deactivated_at TIMESTAMPTZ
 );
 
 CREATE UNIQUE INDEX unique_active_nfc_card_per_user
@@ -225,7 +225,7 @@ CREATE TABLE access_logs (
     user_id int NOT NULL REFERENCES users(id),
     open_space_id int NOT NULL REFERENCES open_spaces(id),
     reservation_id int REFERENCES reservations(id),
-    scanned_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    scanned_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     action access_action NOT NULL,
     result access_result NOT NULL
 );

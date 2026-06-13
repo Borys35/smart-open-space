@@ -1,10 +1,9 @@
-from datetime import datetime
-
 from fastapi import APIRouter, Depends
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.constants import RESERVATION_STATUS_CONFIRMED, RESERVATION_STATUS_DONE
+from app.datetime_utils import as_utc, utc_now
 from app.dependencies import get_db
 from app.models import (
     AccessCredential,
@@ -53,8 +52,8 @@ def deny_response(
         "user_id": credential.user_id if credential else None,
         "open_space_id": device.open_space_id if device else None,
         "reservation_id": reservation.id if reservation else None,
-        "checked_in_at": reservation.checked_in_at if reservation else None,
-        "checked_out_at": reservation.checked_out_at if reservation else None
+        "checked_in_at": as_utc(reservation.checked_in_at) if reservation else None,
+        "checked_out_at": as_utc(reservation.checked_out_at) if reservation else None
     }
 
 @router.post("/check", response_model=SensorAccessCheckResponse)
@@ -62,7 +61,7 @@ def check_access(
     data: SensorAccessCheckRequest,
     db: Session = Depends(get_db)
 ):
-    now = datetime.utcnow()
+    now = utc_now()
 
     device = db.query(AccessDevice).filter(
         AccessDevice.device_key == data.device_key,
@@ -160,6 +159,6 @@ def check_access(
         "user_id": credential.user_id,
         "open_space_id": device.open_space_id,
         "reservation_id": reservation.id,
-        "checked_in_at": reservation.checked_in_at,
-        "checked_out_at": reservation.checked_out_at
+        "checked_in_at": as_utc(reservation.checked_in_at),
+        "checked_out_at": as_utc(reservation.checked_out_at)
     }

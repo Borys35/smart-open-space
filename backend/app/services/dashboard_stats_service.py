@@ -7,6 +7,7 @@ from math import ceil
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.datetime_utils import to_utc, utc_now
 from app.models import AccessLog, Invitation, Membership, OpenSpace, Reservation
 
 
@@ -18,6 +19,7 @@ class StatsRange:
 
 
 def _utc_start_of_day(value: datetime) -> datetime:
+    value = to_utc(value)
     return value.replace(hour=0, minute=0, second=0, microsecond=0)
 
 
@@ -56,15 +58,15 @@ def _align_start(date_from: datetime, group_by: str) -> datetime:
 
 
 def _default_range() -> StatsRange:
-    now = datetime.utcnow()
+    now = utc_now()
     week_start, week_end = _week_bounds(now)
     return StatsRange(date_from=week_start, date_to=week_end, group_by="day")
 
 
 def resolve_stats_range(date_from: datetime | None, date_to: datetime | None, group_by: str | None) -> StatsRange:
     default = _default_range()
-    resolved_from = date_from or default.date_from
-    resolved_to = date_to or default.date_to
+    resolved_from = to_utc(date_from) if date_from is not None else default.date_from
+    resolved_to = to_utc(date_to) if date_to is not None else default.date_to
     resolved_group_by = (group_by or default.group_by).strip().lower()
 
     if resolved_to <= resolved_from:
@@ -111,6 +113,7 @@ def _series_dict(periods: list[tuple[datetime, datetime]], key: str) -> dict[dat
 
 
 def _bucket_key(value: datetime, stats_range: StatsRange) -> datetime:
+    value = to_utc(value)
     aligned = _align_start(value, stats_range.group_by)
     if stats_range.group_by == "hour":
         return aligned.replace(minute=0, second=0, microsecond=0)
@@ -150,7 +153,7 @@ def _credit_renewal(open_space: OpenSpace) -> dict:
     else:
         next_reset = last_reset + timedelta(days=7)
 
-    remaining = max(0, ceil((next_reset - datetime.utcnow()).total_seconds()))
+    remaining = max(0, ceil((next_reset - utc_now()).total_seconds()))
 
     return {
         "credit_reset_period": open_space.credit_reset_period,
@@ -162,7 +165,7 @@ def _credit_renewal(open_space: OpenSpace) -> dict:
 
 
 def build_home_stats(db: Session, open_space_id: int) -> dict:
-    now = datetime.utcnow()
+    now = utc_now()
     week_start, week_end = _week_bounds(now)
     week_range = StatsRange(date_from=week_start, date_to=week_end, group_by="day")
     open_space = get_open_space(db, open_space_id)

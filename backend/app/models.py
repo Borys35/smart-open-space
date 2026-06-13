@@ -1,7 +1,10 @@
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Float, BigInteger, Index, UniqueConstraint, Enum as SQLEnum, text
 from sqlalchemy.orm import relationship
 from app.database import Base
-from datetime import datetime
+from datetime import datetime, timezone
+
+def utc_now():
+    return datetime.now(timezone.utc)
 
 class User(Base):
     __tablename__ = "users"
@@ -35,8 +38,8 @@ class OpenSpace(Base):
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
     image_url = Column(String(500), nullable=True)
-    opened_at = Column(DateTime, nullable=True)
-    closed_at = Column(DateTime, nullable=True)
+    opened_at = Column(DateTime(timezone=True), nullable=True)
+    closed_at = Column(DateTime(timezone=True), nullable=True)
     credits_per_hour = Column(Integer, default=1, nullable=False)
     max_daily_hours = Column(Integer, default=8, nullable=False)
     late_checkout_penalty_hours = Column(Integer, nullable=True)
@@ -47,9 +50,9 @@ class OpenSpace(Base):
         default="WEEKLY",
         nullable=False
     )
-    last_credit_reset_at = Column(DateTime, default=datetime.utcnow)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow)
+    last_credit_reset_at = Column(DateTime(timezone=True), default=utc_now)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    updated_at = Column(DateTime(timezone=True), default=utc_now)
     is_active = Column(Boolean, default=True, nullable=False)
 
     manager_assignments = relationship("OpenSpaceManager", back_populates="open_space")
@@ -63,8 +66,8 @@ class OpenSpaceManager(Base):
     open_space_id = Column(Integer, ForeignKey("open_spaces.id"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     assigned_by = Column(Integer, ForeignKey("users.id"), nullable=True)
-    assigned_at = Column(DateTime, default=datetime.utcnow)
-    unassigned_at = Column(DateTime, nullable=True)
+    assigned_at = Column(DateTime(timezone=True), default=utc_now)
+    unassigned_at = Column(DateTime(timezone=True), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     
     open_space = relationship("OpenSpace", back_populates="manager_assignments")
@@ -85,8 +88,8 @@ class Desk(Base):
         SQLEnum("AVAILABLE", "MAINTENANCE", "INACTIVE", name="desk_status", create_type=False), 
         default="AVAILABLE", 
         nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    updated_at = Column(DateTime(timezone=True), default=utc_now)
 
     open_space = relationship("OpenSpace", back_populates="desks")
 
@@ -102,10 +105,10 @@ class Invitation(Base):
         SQLEnum("PENDING", "ACCEPTED", "REJECTED", "EXPIRED", name="invitation_status", create_type=False),
         server_default=text("'PENDING'"),
         nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    responded_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    responded_at = Column(DateTime(timezone=True), nullable=True)
     expires_at = Column(
-        DateTime,
+        DateTime(timezone=True),
         server_default=text("CURRENT_TIMESTAMP + INTERVAL '7 days'"),
         nullable=False
     )
@@ -127,9 +130,9 @@ class Membership(Base):
         default="ACTIVE",
         nullable=False
     )
-    joined_at = Column(DateTime, default=datetime.utcnow)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default= datetime.utcnow)
+    joined_at = Column(DateTime(timezone=True), default=utc_now)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    updated_at = Column(DateTime(timezone=True), default=utc_now)
 
     user = relationship("User", foreign_keys=[user_id])
     open_space = relationship("OpenSpace")
@@ -142,8 +145,8 @@ class AccessDevice(Base):
     name = Column(String(100), nullable=False)
     device_key = Column(String(100), unique=True, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    updated_at = Column(DateTime(timezone=True), default=utc_now)
 
     open_space = relationship("OpenSpace")
 
@@ -158,8 +161,8 @@ class AccessCredential(Base):
     )
     uid = Column(String(100), unique=True, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
-    assigned_at = Column(DateTime, default=datetime.utcnow)
-    deactivated_at = Column(DateTime, nullable=True)
+    assigned_at = Column(DateTime(timezone=True), default=utc_now)
+    deactivated_at = Column(DateTime(timezone=True), nullable=True)
 
     user = relationship("User", foreign_keys=[user_id])
 
@@ -179,8 +182,8 @@ class PushToken(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     token = Column(String(64), nullable=False)
     device_id = Column(String(32), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    updated_at = Column(DateTime(timezone=True), default=utc_now)
 
     __table_args__ = (
         UniqueConstraint("user_id", "device_id", name="uq_push_tokens_user_device"),
@@ -193,8 +196,8 @@ class Reservation(Base):
     desk_id = Column(Integer, ForeignKey("desks.id"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     membership_id = Column(Integer, ForeignKey("memberships.id"), nullable=False)
-    start_time = Column(DateTime, nullable=False)
-    end_time = Column(DateTime, nullable=False)
+    start_time = Column(DateTime(timezone=True), nullable=False)
+    end_time = Column(DateTime(timezone=True), nullable=False)
     credit_cost = Column(Integer, nullable=False)
     late_checkout_penalty_cost = Column(Integer, default=0, nullable=False)
     no_show_penalty_cost = Column(Integer, default=0, nullable=False)
@@ -203,12 +206,12 @@ class Reservation(Base):
         default="CONFIRMED",
         nullable=False
     )
-    checked_in_at = Column(DateTime, nullable=True)
-    checked_out_at = Column(DateTime, nullable=True)
-    late_checkout_penalty_applied_at = Column(DateTime, nullable=True)
-    no_show_penalty_applied_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    checked_in_at = Column(DateTime(timezone=True), nullable=True)
+    checked_out_at = Column(DateTime(timezone=True), nullable=True)
+    late_checkout_penalty_applied_at = Column(DateTime(timezone=True), nullable=True)
+    no_show_penalty_applied_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
     
     desk = relationship("Desk", foreign_keys=[desk_id])
     user = relationship("User", foreign_keys=[user_id])
@@ -226,7 +229,7 @@ class CreditTransaction(Base):
     )
     description = Column(String(255), nullable=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
 
     membership = relationship("Membership", foreign_keys=[membership_id])
     created_by_user = relationship("User", foreign_keys=[created_by])
@@ -240,7 +243,7 @@ class AccessLog(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     open_space_id = Column(Integer, ForeignKey("open_spaces.id"), nullable=False)
     reservation_id = Column(Integer, ForeignKey("reservations.id"), nullable=True)
-    scanned_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    scanned_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
     action = Column(
         SQLEnum("CHECK_IN", "CHECK_OUT", "ENTRY", "IDENTITY_VERIFICATION", name="access_action", create_type=False),
         nullable=False

@@ -11,6 +11,7 @@ from app.constants import (
     RESERVATION_STATUS_NO_SHOW,
     RESERVATION_STATUS_PENDING
 )
+from app.datetime_utils import as_utc, to_utc
 from app.dependencies import get_db, is_super_admin, require_dashboard_access
 from app.models import User, Desk, OpenSpace, OpenSpaceManager, Reservation, Membership, CreditTransaction
 from app.schemas import DashboardReservationsPageResponse, DashboardReservationDetailsResponse
@@ -31,6 +32,8 @@ def get_open_space_reservations(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_dashboard_access)
 ):
+    date_from = to_utc(date_from)
+    date_to = to_utc(date_to)
     
     if page < 1:
         raise HTTPException(status_code=400, detail="Page must be greater than 0")
@@ -123,8 +126,8 @@ def get_open_space_reservations(
             "user_id": user.id,
             "username": user.username,
             "email": user.email,
-            "start_time": reservation.start_time,
-            "end_time": reservation.end_time,
+            "start_time": as_utc(reservation.start_time),
+            "end_time": as_utc(reservation.end_time),
             "credit_cost": reservation.credit_cost,
             "late_checkout_penalty_cost": reservation.late_checkout_penalty_cost,
             "no_show_penalty_cost": reservation.no_show_penalty_cost,
@@ -182,17 +185,17 @@ def get_reservation_details(
         "user_id": user.id,
         "username": user.username,
         "email": user.email,
-        "start_time": reservation.start_time,
-        "end_time": reservation.end_time,
+        "start_time": as_utc(reservation.start_time),
+        "end_time": as_utc(reservation.end_time),
         "credit_cost": reservation.credit_cost,
         "late_checkout_penalty_cost": reservation.late_checkout_penalty_cost,
         "no_show_penalty_cost": reservation.no_show_penalty_cost,
-        "late_checkout_penalty_applied_at": reservation.late_checkout_penalty_applied_at,
-        "no_show_penalty_applied_at": reservation.no_show_penalty_applied_at,
+        "late_checkout_penalty_applied_at": as_utc(reservation.late_checkout_penalty_applied_at),
+        "no_show_penalty_applied_at": as_utc(reservation.no_show_penalty_applied_at),
         "status": reservation.status,
-        "checked_in_at": reservation.checked_in_at,
-        "checked_out_at": reservation.checked_out_at,
-        "created_at": reservation.created_at
+        "checked_in_at": as_utc(reservation.checked_in_at),
+        "checked_out_at": as_utc(reservation.checked_out_at),
+        "created_at": as_utc(reservation.created_at)
     }
         
 @router.delete("/{open_space_id}/reservations/{reservation_id}", status_code=204)

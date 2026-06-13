@@ -1,9 +1,8 @@
-from datetime import datetime
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.datetime_utils import utc_now
 from app.dependencies import get_db, get_current_user
 from app.models import AccessCredential, User
 from app.schemas import AccessCredentialCreate, AccessCredentialResponse, MessageResponse
@@ -103,7 +102,7 @@ def deactivate_my_access_credential(
         raise HTTPException(status_code=400, detail="Access credential is already inactive")
 
     credential.is_active = False
-    credential.deactivated_at = datetime.utcnow()
+    credential.deactivated_at = utc_now()
 
     db.commit()
 

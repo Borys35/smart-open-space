@@ -1,9 +1,8 @@
-from datetime import datetime
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
+from app.datetime_utils import utc_now
 from app.dependencies import get_db, get_current_user
 from app.models import User, Invitation, Membership, OpenSpace
 from app.schemas import InviteResponse
@@ -81,7 +80,7 @@ def reject_invite(
         raise HTTPException(status_code=400, detail="Invitation is not pending")
     
     invite.status = "REJECTED"
-    invite.responded_at = datetime.utcnow()
+    invite.responded_at = utc_now()
 
     db.commit()
 
@@ -133,7 +132,7 @@ def accept_invite(
         db.add(new_membership)
 
     invite.status = "ACCEPTED"
-    invite.responded_at = datetime.utcnow()
+    invite.responded_at = utc_now()
 
     if invite.invited_user_id is None:
         invite.invited_user_id = current_user.id

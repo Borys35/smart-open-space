@@ -11,6 +11,7 @@ from app.constants import (
     RESERVATION_STATUS_CANCELLED,
     RESERVATION_STATUS_CONFIRMED
 )
+from app.datetime_utils import as_utc, local_date_time_to_utc, to_utc, utc_now
 from app.dependencies import get_db, get_current_user
 from app.models import User, Desk, OpenSpace, Membership, Reservation, CreditTransaction
 from app.schemas import (
@@ -30,8 +31,8 @@ def serialize_reservation(reservation: Reservation):
     return {
         "id": reservation.id,
         "desk_id": reservation.desk_id,
-        "start_time": reservation.start_time,
-        "end_time": reservation.end_time,
+        "start_time": as_utc(reservation.start_time),
+        "end_time": as_utc(reservation.end_time),
         "credit_cost": reservation.credit_cost,
         "late_checkout_penalty_cost": reservation.late_checkout_penalty_cost,
         "no_show_penalty_cost": reservation.no_show_penalty_cost,
@@ -39,14 +40,14 @@ def serialize_reservation(reservation: Reservation):
     }
 
 def get_open_space_day_range(open_space: OpenSpace, selected_date: date):
-    day_start = datetime.combine(selected_date, time.min)
+    day_start = local_date_time_to_utc(selected_date, time.min)
     day_end = day_start + timedelta(days=1)
 
     if open_space.opened_at is not None:
-        day_start = datetime.combine(selected_date, open_space.opened_at.time())
+        day_start = local_date_time_to_utc(selected_date, open_space.opened_at.time())
 
     if open_space.closed_at is not None:
-        day_end = datetime.combine(selected_date, open_space.closed_at.time())
+        day_end = local_date_time_to_utc(selected_date, open_space.closed_at.time())
 
         if day_end <= day_start:
             day_end += timedelta(days=1)
@@ -57,8 +58,8 @@ def serialize_window(start_time: datetime, end_time: datetime):
     duration_minutes = int((end_time - start_time).total_seconds() / 60)
 
     return {
-        "start_time": start_time,
-        "end_time": end_time,
+        "start_time": as_utc(start_time),
+        "end_time": as_utc(end_time),
         "duration_minutes": duration_minutes
     }
 
@@ -122,6 +123,8 @@ def create_reservation(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    start_time = to_utc(data.start_time)
+    end_time = to_utc(data.end_time)
     
     desk = db.query(Desk).filter(Desk.id == data.desk_id).first()
 
@@ -131,7 +134,7 @@ def create_reservation(
     if desk.status != "AVAILABLE":
         raise HTTPException(status_code=400, detail="Desk is not available")
     
-    if data.end_time <= data.start_time:
+    if end_time <= start_time:
         raise HTTPException(status_code=400, detail="End time must be after start time")
     
     membership = db.query(Membership).filter(
@@ -146,8 +149,8 @@ def create_reservation(
     conflict_reservation = db.query(Reservation).filter(
         Reservation.desk_id == data.desk_id,
         Reservation.status.notin_(FINISHED_RESERVATION_STATUSES),
-        data.end_time > Reservation.start_time,
-        data.start_time < Reservation.end_time
+        end_time > Reservation.start_time,
+        start_time < Reservation.end_time
     ).first()
 
     if conflict_reservation:
@@ -156,8 +159,8 @@ def create_reservation(
     user_conflict_reservation = db.query(Reservation).filter(
         Reservation.user_id == current_user.id,
         Reservation.status.notin_(FINISHED_RESERVATION_STATUSES),
-        data.end_time > Reservation.start_time,
-        data.start_time < Reservation.end_time
+        end_time > Reservation.start_time,
+        start_time < Reservation.end_time
     ).first()
 
     if user_conflict_reservation:
@@ -168,7 +171,7 @@ def create_reservation(
     if not open_space:
         raise HTTPException(status_code=404, detail="Open space not found")
     
-    duration = data.end_time - data.start_time
+    duration = end_time - start_time
     duration_hours = duration.total_seconds() / 3600
     
     if duration_hours > open_space.max_daily_hours:
@@ -185,8 +188,8 @@ def create_reservation(
         desk_id=data.desk_id,
         user_id=current_user.id,
         membership_id=membership.id,
-        start_time=data.start_time,
-        end_time=data.end_time,
+        start_time=start_time,
+        end_time=end_time,
         credit_cost=credit_cost,
         status=RESERVATION_STATUS_CONFIRMED
     )
@@ -225,6 +228,9 @@ def quote_reservation(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    start_time = to_utc(data.start_time)
+    end_time = to_utc(data.end_time)
+
     desk = db.query(Desk).filter(Desk.id == data.desk_id).first()
 
     if not desk:
@@ -243,13 +249,13 @@ def quote_reservation(
     if not membership:
         raise HTTPException(status_code=403, detail="You are not a member of this open space")
 
-    duration = data.end_time - data.start_time
+    duration = end_time - start_time
     duration_minutes = max(0, int(duration.total_seconds() / 60))
     credit_cost = 0
     can_reserve = True
     reason = None
 
-    if data.end_time <= data.start_time:
+    if end_time <= start_time:
         can_reserve = False
         reason = "End time must be after start time"
     else:
@@ -269,8 +275,8 @@ def quote_reservation(
             conflict_reservation = db.query(Reservation).filter(
                 Reservation.desk_id == data.desk_id,
                 Reservation.status.notin_(FINISHED_RESERVATION_STATUSES),
-                data.end_time > Reservation.start_time,
-                data.start_time < Reservation.end_time
+                end_time > Reservation.start_time,
+                start_time < Reservation.end_time
             ).first()
 
             if conflict_reservation:
@@ -280,8 +286,8 @@ def quote_reservation(
             user_conflict_reservation = db.query(Reservation).filter(
                 Reservation.user_id == current_user.id,
                 Reservation.status.notin_(FINISHED_RESERVATION_STATUSES),
-                data.end_time > Reservation.start_time,
-                data.start_time < Reservation.end_time
+                end_time > Reservation.start_time,
+                start_time < Reservation.end_time
             ).first()
 
             if user_conflict_reservation:
@@ -290,8 +296,8 @@ def quote_reservation(
 
     return {
         "desk_id": data.desk_id,
-        "start_time": data.start_time,
-        "end_time": data.end_time,
+        "start_time": as_utc(start_time),
+        "end_time": as_utc(end_time),
         "duration_minutes": duration_minutes,
         "credit_cost": credit_cost,
         "credits_balance": membership.credits_balance,
@@ -345,6 +351,8 @@ def update_reservation_time(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    start_time = to_utc(data.start_time)
+    end_time = to_utc(data.end_time)
 
     reservation = db.query(Reservation).filter(Reservation.id == reservation_id).first()
 
@@ -357,7 +365,7 @@ def update_reservation_time(
     if reservation.status in FINISHED_RESERVATION_STATUSES:
         raise HTTPException(status_code=400, detail="Reservation time cannot be changed")
 
-    if data.end_time <= data.start_time:
+    if end_time <= start_time:
         raise HTTPException(status_code=400, detail="End time must be after start time")
 
     desk = db.query(Desk).filter(Desk.id == reservation.desk_id).first()
@@ -381,8 +389,8 @@ def update_reservation_time(
         Reservation.id != reservation_id,
         Reservation.desk_id == reservation.desk_id,
         Reservation.status.notin_(FINISHED_RESERVATION_STATUSES),
-        data.end_time > Reservation.start_time,
-        data.start_time < Reservation.end_time
+        end_time > Reservation.start_time,
+        start_time < Reservation.end_time
     ).first()
 
     if conflict_reservation:
@@ -392,8 +400,8 @@ def update_reservation_time(
         Reservation.id != reservation_id,
         Reservation.user_id == current_user.id,
         Reservation.status.notin_(FINISHED_RESERVATION_STATUSES),
-        data.end_time > Reservation.start_time,
-        data.start_time < Reservation.end_time
+        end_time > Reservation.start_time,
+        start_time < Reservation.end_time
     ).first()
 
     if user_conflict_reservation:
@@ -404,7 +412,7 @@ def update_reservation_time(
     if not open_space:
         raise HTTPException(status_code=404, detail="Open space not found")
 
-    duration = data.end_time - data.start_time
+    duration = end_time - start_time
     duration_hours = duration.total_seconds() / 3600
 
     if duration_hours > open_space.max_daily_hours:
@@ -436,10 +444,10 @@ def update_reservation_time(
 
         db.add(credit_transaction)
 
-    reservation.start_time = data.start_time
-    reservation.end_time = data.end_time
+    reservation.start_time = start_time
+    reservation.end_time = end_time
     reservation.credit_cost = new_credit_cost
-    reservation.updated_at = datetime.utcnow()
+    reservation.updated_at = utc_now()
 
     db.commit()
     db.refresh(reservation)
@@ -454,6 +462,8 @@ def get_desk_availability(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    start_time = to_utc(start_time)
+    end_time = to_utc(end_time)
     
     if end_time <= start_time:
         raise HTTPException(status_code=400, detail="End time must be after start time")
