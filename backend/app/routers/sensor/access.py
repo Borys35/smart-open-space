@@ -1,4 +1,5 @@
 import hmac
+from datetime import timedelta
 
 from app.constants import RESERVATION_STATUS_CONFIRMED, RESERVATION_STATUS_DONE
 from app.datetime_utils import as_utc, utc_now
@@ -17,9 +18,11 @@ from app.schemas import SensorPhoneAccessCheckRequest
 from app.services.penalty_service import apply_late_checkout_penalty
 from fastapi import APIRouter, Depends
 from sqlalchemy import or_
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/api/sensor/access", tags=["sensor-access"])
+MIN_ACCESS_ACTION_INTERVAL = timedelta(seconds=5)
 
 
 def create_access_log(
@@ -41,6 +44,14 @@ def create_access_log(
     )
 
     db.add(access_log)
+
+
+def commit_or_rollback(db: Session):
+    try:
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        raise
 
 
 def deny_response(
@@ -135,7 +146,7 @@ def check_phone_access(
 
     if not hmac.compare_digest(expected_signature, data.signature):
         create_access_log(db, credential, device, "IDENTITY_VERIFICATION", "DENIED")
-        db.commit()
+        commit_or_rollback(db)
         return deny_response("Phone credential signature is invalid", device, credential)
 
     return check_credential_access(db, device, credential)
@@ -162,12 +173,13 @@ def check_credential_access(
             Membership.open_space_id == device.open_space_id,
             Membership.status == "ACTIVE",
         )
+        .with_for_update()
         .first()
     )
 
     if not membership:
         create_access_log(db, credential, device, "IDENTITY_VERIFICATION", "DENIED")
-        db.commit()
+        commit_or_rollback(db)
         return deny_response(
             "User is not an active member of this open space", device, credential
         )
@@ -187,19 +199,20 @@ def check_credential_access(
                 ),
             ),
         )
+        .with_for_update()
         .all()
     )
 
     if not active_reservations:
         create_access_log(db, credential, device, "IDENTITY_VERIFICATION", "DENIED")
-        db.commit()
+        commit_or_rollback(db)
         return deny_response(
             "User does not have an active reservation now", device, credential
         )
 
     if len(active_reservations) > 1:
         create_access_log(db, credential, device, "IDENTITY_VERIFICATION", "DENIED")
-        db.commit()
+        commit_or_rollback(db)
         return deny_response(
             "User has more than one active reservation now", device, credential
         )
@@ -210,7 +223,7 @@ def check_credential_access(
         create_access_log(
             db, credential, device, "IDENTITY_VERIFICATION", "DENIED", reservation.id
         )
-        db.commit()
+        commit_or_rollback(db)
         return deny_response(
             "Reservation is already checked out", device, credential, reservation
         )
@@ -220,7 +233,7 @@ def check_credential_access(
             create_access_log(
                 db, credential, device, "CHECK_IN", "DENIED", reservation.id
             )
-            db.commit()
+            commit_or_rollback(db)
             return deny_response(
                 "Reservation already ended", device, credential, reservation
             )
@@ -228,6 +241,15 @@ def check_credential_access(
         action = "CHECK_IN"
         reservation.checked_in_at = now
     else:
+        if as_utc(now) - as_utc(reservation.checked_in_at) < MIN_ACCESS_ACTION_INTERVAL:
+            create_access_log(
+                db, credential, device, "CHECK_OUT", "DENIED", reservation.id
+            )
+            commit_or_rollback(db)
+            return deny_response(
+                "Reservation was just checked in", device, credential, reservation
+            )
+
         action = "CHECK_OUT"
         reservation.checked_out_at = now
         apply_late_checkout_penalty(db, reservation, membership, open_space, now)
@@ -235,7 +257,7 @@ def check_credential_access(
 
     reservation.updated_at = now
     create_access_log(db, credential, device, action, "SUCCESS", reservation.id)
-    db.commit()
+    commit_or_rollback(db)
     db.refresh(reservation)
 
     return {

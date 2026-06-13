@@ -4,8 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
+from app.datetime_utils import as_utc, utc_now
 from app.dependencies import get_db, is_super_admin, require_dashboard_access
-from app.models import User, Invitation, OpenSpace, OpenSpaceManager, PushToken
+from app.models import User, Invitation, Membership, OpenSpace, OpenSpaceManager, PushToken
 from app.schemas import CreateInviteRequest
 from app.services.push_service import send_push_notification
 
@@ -44,6 +45,29 @@ def create_invite(
 
     if invited_user and invited_user.id == current_user.id:
         raise HTTPException(status_code=400, detail="You cannot invite yourself")
+
+    if invited_user:
+        existing_membership = db.query(Membership).filter(
+            Membership.user_id == invited_user.id,
+            Membership.open_space_id == data.space_id,
+            Membership.status == "ACTIVE"
+        ).first()
+
+        if existing_membership:
+            raise HTTPException(status_code=400, detail="User is already a member of this open space")
+
+    existing_pending_invite = db.query(Invitation).filter(
+        Invitation.open_space_id == data.space_id,
+        Invitation.invited_email == invited_email,
+        Invitation.status == "PENDING"
+    ).with_for_update().first()
+
+    if existing_pending_invite:
+        if existing_pending_invite.expires_at is not None and as_utc(existing_pending_invite.expires_at) <= utc_now():
+            existing_pending_invite.status = "EXPIRED"
+            existing_pending_invite.responded_at = utc_now()
+        else:
+            raise HTTPException(status_code=400, detail="Pending invitation for this email already exists")
     
     new_invitation = Invitation(
         open_space_id=data.space_id,

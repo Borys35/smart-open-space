@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
-from app.constants import ROLE_MANAGER, ROLE_USER, RESERVATION_STATUS_CONFIRMED
+from app.constants import OPEN_SPACE_MANAGER_ROLE, ROLE_USER, RESERVATION_STATUS_CONFIRMED
 from app.datetime_utils import as_utc, to_utc, utc_now
 from app.dependencies import get_db, is_super_admin, require_dashboard_access, require_roles
 from app.models import Invitation, User, OpenSpace, Desk, OpenSpaceManager, Reservation, Membership
@@ -332,7 +332,8 @@ def get_open_space_invites(
     if pending_only:
         invites = db.query(Invitation).filter(
             Invitation.open_space_id == open_space_id,
-            Invitation.status == "PENDING"
+            Invitation.status == "PENDING",
+            Invitation.expires_at > utc_now()
         ).all()
     else:
         invites = db.query(Invitation).filter(Invitation.open_space_id == open_space_id).all()
@@ -443,17 +444,17 @@ def get_open_space_users(
         if not manager_assignment:
             raise HTTPException(status_code=403, detail="You can view users only in your assigned open space")
 
-    allowed_roles = [ROLE_USER, ROLE_MANAGER]
+    allowed_roles = [ROLE_USER, OPEN_SPACE_MANAGER_ROLE]
 
     if role is not None:
         role = role.strip().upper()
 
         if role not in allowed_roles:
-            raise HTTPException(status_code=400, detail="Role must be USER or MANAGER")
+            raise HTTPException(status_code=400, detail="Role must be USER or OPEN_SPACE_MANAGER")
     
     result = []
 
-    if role is None or role == ROLE_MANAGER:
+    if role is None or role == OPEN_SPACE_MANAGER_ROLE:
         manager_assignments = db.query(OpenSpaceManager, User).join(
             User, OpenSpaceManager.user_id == User.id
         ).filter(
@@ -466,7 +467,7 @@ def get_open_space_users(
                 "id": user.id,
                 "username": user.username,
                 "email": user.email,
-                "role": ROLE_MANAGER,
+                "role": OPEN_SPACE_MANAGER_ROLE,
                 "membership_status": None,
                 "credits_balance": None,
                 "pending_penalty_credits": None

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
-from app.constants import ROLE_MANAGER, ROLE_SUPER_ADMIN, ROLE_USER
+from app.constants import OPEN_SPACE_MANAGER_ROLE, ROLE_SUPER_ADMIN, ROLE_USER
 from app.models import OpenSpaceManager, User, Role
 from app.schemas import RegisterRequest, UserResponse, LoginRequest, LoginResponse, DashboardLoginResponse 
 from app.services.auth_service import hash_password, verify_password, create_access_token
@@ -105,8 +105,8 @@ def dashboard_login(data: LoginRequest, db: Session = Depends(get_db)):
     token = create_access_token(user.id)
     dashboard_role = user.role.name
 
-    if user.role.name != ROLE_SUPER_ADMIN and has_manager_assignment:
-        dashboard_role = ROLE_MANAGER
+    if user.role.name != ROLE_SUPER_ADMIN:
+        dashboard_role = OPEN_SPACE_MANAGER_ROLE
 
     return {
         "access_token": token,
@@ -133,7 +133,7 @@ def get_dashboard_me(current_user: User = Depends(require_dashboard_access)):
     dashboard_role = current_user.role.name
 
     if current_user.role.name != ROLE_SUPER_ADMIN:
-        dashboard_role = ROLE_MANAGER
+        dashboard_role = OPEN_SPACE_MANAGER_ROLE
 
     return {
         "id": current_user.id,

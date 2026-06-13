@@ -11,6 +11,7 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    Text,
     UniqueConstraint,
     text,
 )
@@ -22,10 +23,12 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String(50), nullable=False)
-    email = Column(String, unique=True, nullable=False)
-    password_hash = Column(String, nullable=False)
+    email = Column(String(255), unique=True, nullable=False)
+    password_hash = Column(String(100), nullable=False)
     role_id = Column(Integer, ForeignKey("roles.id"), nullable=False)
-    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+    is_active = Column(Boolean, default=True, nullable=False)
 
     role = relationship("Role", back_populates="users")
 
@@ -34,7 +37,11 @@ class Role(Base):
     __tablename__ = "roles"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False, unique=True)
+    name = Column(
+        SQLEnum("SUPER_ADMIN", "USER", name="role_enum", create_type=False),
+        nullable=False,
+        unique=True,
+    )
 
     users = relationship("User", back_populates="role")
 
@@ -45,15 +52,15 @@ class OpenSpace(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
     floor = Column(Integer, nullable=False)
-    building = Column(String(50), nullable=True)
-    address = Column(String(255), nullable=True)
-    place_name = Column(String(255), nullable=True)
+    building = Column(String(50), nullable=False)
+    address = Column(Text, nullable=True)
+    place_name = Column(Text, nullable=True)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
-    image_url = Column(String(500), nullable=True)
+    image_url = Column(Text, nullable=True)
     opened_at = Column(DateTime(timezone=True), nullable=True)
     closed_at = Column(DateTime(timezone=True), nullable=True)
-    credits_per_hour = Column(Integer, default=1, nullable=False)
+    credits_per_hour = Column(Integer, default=2, nullable=False)
     max_daily_hours = Column(Integer, default=8, nullable=False)
     late_checkout_penalty_hours = Column(Integer, nullable=True)
     no_show_penalty_hours = Column(Integer, nullable=True)
@@ -67,12 +74,27 @@ class OpenSpace(Base):
     )
     last_credit_reset_at = Column(DateTime(timezone=True), default=utc_now)
     created_at = Column(DateTime(timezone=True), default=utc_now)
-    updated_at = Column(DateTime(timezone=True), default=utc_now)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
     is_active = Column(Boolean, default=True, nullable=False)
 
     manager_assignments = relationship("OpenSpaceManager", back_populates="open_space")
     desks = relationship("Desk", back_populates="open_space")
     invitations = relationship("Invitation", back_populates="open_space")
+
+    __table_args__ = (
+        UniqueConstraint("building", "name", name="uq_open_spaces_building_name"),
+        CheckConstraint("credits_per_hour > 0", name="ck_open_spaces_credits_per_hour_positive"),
+        CheckConstraint("max_daily_hours > 0", name="ck_open_spaces_max_daily_hours_positive"),
+        CheckConstraint(
+            "late_checkout_penalty_hours IS NULL OR late_checkout_penalty_hours > 0",
+            name="ck_open_spaces_late_checkout_penalty_hours_positive",
+        ),
+        CheckConstraint(
+            "no_show_penalty_hours IS NULL OR no_show_penalty_hours > 0",
+            name="ck_open_spaces_no_show_penalty_hours_positive",
+        ),
+        CheckConstraint("period_credits >= 0", name="ck_open_spaces_period_credits_non_negative"),
+    )
 
 
 class OpenSpaceManager(Base):
@@ -89,6 +111,14 @@ class OpenSpaceManager(Base):
     open_space = relationship("OpenSpace", back_populates="manager_assignments")
     manager = relationship("User", foreign_keys=[user_id])
     assigned_by_user = relationship("User", foreign_keys=[assigned_by])
+
+    __table_args__ = (
+        Index(
+            "idx_open_space_managers_user_active",
+            "user_id",
+            postgresql_where=text("is_active = TRUE"),
+        ),
+    )
 
 
 class Desk(Base):
@@ -113,9 +143,15 @@ class Desk(Base):
         nullable=False,
     )
     created_at = Column(DateTime(timezone=True), default=utc_now)
-    updated_at = Column(DateTime(timezone=True), default=utc_now)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
     open_space = relationship("OpenSpace", back_populates="desks")
+
+    __table_args__ = (
+        CheckConstraint("width > 0", name="ck_desks_width_positive"),
+        CheckConstraint("height > 0", name="ck_desks_height_positive"),
+        Index("idx_desks_open_space_status", "open_space_id", "status"),
+    )
 
 
 class Invitation(Base):
@@ -150,6 +186,21 @@ class Invitation(Base):
     invited_user = relationship("User", foreign_keys=[invited_user_id])
     invited_by_user = relationship("User", foreign_keys=[invited_by])
 
+    __table_args__ = (
+        CheckConstraint(
+            "invited_user_id IS NULL OR invited_user_id <> invited_by",
+            name="ck_invitations_not_self",
+        ),
+        Index(
+            "unique_pending_invitation_per_email",
+            "open_space_id",
+            "invited_email",
+            unique=True,
+            postgresql_where=text("status = 'PENDING'"),
+        ),
+        Index("idx_invitations_open_space_status_created_at", "open_space_id", "status", "created_at"),
+    )
+
 
 class Membership(Base):
     __tablename__ = "memberships"
@@ -168,10 +219,21 @@ class Membership(Base):
     )
     joined_at = Column(DateTime(timezone=True), default=utc_now)
     created_at = Column(DateTime(timezone=True), default=utc_now)
-    updated_at = Column(DateTime(timezone=True), default=utc_now)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
     user = relationship("User", foreign_keys=[user_id])
     open_space = relationship("OpenSpace")
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "open_space_id", name="uq_memberships_user_open_space"),
+        CheckConstraint("credits_balance >= 0", name="ck_memberships_credits_balance_non_negative"),
+        CheckConstraint(
+            "pending_penalty_credits >= 0",
+            name="ck_memberships_pending_penalty_credits_non_negative",
+        ),
+        Index("idx_memberships_open_space_status", "open_space_id", "status"),
+        Index("idx_memberships_user_status", "user_id", "status"),
+    )
 
 
 class AccessDevice(Base):
@@ -183,7 +245,7 @@ class AccessDevice(Base):
     device_key = Column(String(100), unique=True, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), default=utc_now)
-    updated_at = Column(DateTime(timezone=True), default=utc_now)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
     open_space = relationship("OpenSpace")
 
@@ -197,10 +259,10 @@ class AccessCredential(Base):
         SQLEnum("CARD", "PHONE", name="access_credential_type", create_type=False),
         nullable=False,
     )
-    uid = Column(String(100), nullable=True)
-    mobile_credential_id = Column(String(100), unique=True, nullable=True)
-    public_key = Column(String, nullable=True)
-    shared_secret_hash = Column(String, nullable=True)
+    uid = Column(Text, nullable=True)
+    mobile_credential_id = Column(Text, unique=True, nullable=True)
+    public_key = Column(Text, nullable=True)
+    shared_secret_hash = Column(Text, nullable=True)
     active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
     updated_at = Column(
@@ -229,6 +291,7 @@ class AccessCredential(Base):
                 "cred_type = 'CARD' AND active = TRUE AND uid IS NOT NULL"
             ),
         ),
+        Index("idx_access_credentials_user_created_at", "user_id", "created_at"),
     )
 
 
@@ -237,13 +300,15 @@ class PushToken(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    token = Column(String(64), nullable=False)
-    device_id = Column(String(32), nullable=False)
+    token = Column(Text, nullable=False)
+    device_id = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), default=utc_now)
-    updated_at = Column(DateTime(timezone=True), default=utc_now)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
     __table_args__ = (
         UniqueConstraint("user_id", "device_id", name="uq_push_tokens_user_device"),
+        CheckConstraint("length(token) > 0 AND length(token) < 64", name="ck_push_tokens_token_length"),
+        CheckConstraint("length(device_id) = 32", name="ck_push_tokens_device_id_length"),
     )
 
 
@@ -284,6 +349,21 @@ class Reservation(Base):
     user = relationship("User", foreign_keys=[user_id])
     membership = relationship("Membership", foreign_keys=[membership_id])
 
+    __table_args__ = (
+        CheckConstraint("end_time > start_time", name="ck_reservations_end_time_after_start_time"),
+        CheckConstraint("credit_cost >= 0", name="ck_reservations_credit_cost_non_negative"),
+        CheckConstraint(
+            "late_checkout_penalty_cost >= 0",
+            name="ck_reservations_late_checkout_penalty_cost_non_negative",
+        ),
+        CheckConstraint(
+            "no_show_penalty_cost >= 0",
+            name="ck_reservations_no_show_penalty_cost_non_negative",
+        ),
+        Index("idx_reservations_user_start_time", "user_id", "start_time"),
+        Index("idx_reservations_status_start_time", "status", "start_time"),
+    )
+
 
 class CreditTransaction(Base):
     __tablename__ = "credit_transactions"
@@ -310,6 +390,10 @@ class CreditTransaction(Base):
 
     membership = relationship("Membership", foreign_keys=[membership_id])
     created_by_user = relationship("User", foreign_keys=[created_by])
+
+    __table_args__ = (
+        CheckConstraint("amount <> 0", name="ck_credit_transactions_amount_non_zero"),
+    )
 
 
 class AccessLog(Base):
@@ -347,3 +431,8 @@ class AccessLog(Base):
     user = relationship("User", foreign_keys=[user_id])
     open_space = relationship("OpenSpace", foreign_keys=[open_space_id])
     reservation = relationship("Reservation", foreign_keys=[reservation_id])
+
+    __table_args__ = (
+        Index("idx_access_logs_open_space_scanned_at", "open_space_id", "scanned_at"),
+        Index("idx_access_logs_user_scanned_at", "user_id", "scanned_at"),
+    )

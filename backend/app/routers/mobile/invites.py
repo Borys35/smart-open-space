@@ -1,13 +1,27 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
 from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
-from app.datetime_utils import utc_now
+from app.datetime_utils import as_utc, utc_now
 from app.dependencies import get_db, get_current_user
 from app.models import User, Invitation, Membership, OpenSpace
 from app.schemas import InviteResponse
 
 router = APIRouter(prefix="/api/invites", tags=["mobile-invites"])
+
+def is_invite_expired(invite: Invitation):
+    return invite.expires_at is not None and as_utc(invite.expires_at) <= utc_now()
+
+def ensure_pending_invite(invite: Invitation, db: Session):
+    if invite.status != "PENDING":
+        raise HTTPException(status_code=400, detail="Invitation is not pending")
+
+    if is_invite_expired(invite):
+        invite.status = "EXPIRED"
+        invite.responded_at = utc_now()
+        db.commit()
+        raise HTTPException(status_code=400, detail="Invitation has expired")
 
 @router.get("", response_model=list[InviteResponse])
 def get_my_invites(
@@ -22,6 +36,8 @@ def get_my_invites(
         OpenSpace, Invitation.open_space_id == OpenSpace.id
     ).filter(
         Invitation.status == "PENDING",
+        Invitation.expires_at > utc_now(),
+        OpenSpace.is_active == True,
         or_(
             Invitation.invited_user_id == current_user.id,
             Invitation.invited_email == user_email
@@ -63,7 +79,12 @@ def reject_invite(
     
     user_email = current_user.email.lower().strip()
 
-    invite = db.query(Invitation).filter(Invitation.id == invite_id).first()
+    invite = (
+        db.query(Invitation)
+        .filter(Invitation.id == invite_id)
+        .with_for_update()
+        .first()
+    )
 
     if not invite:
         raise HTTPException(status_code=404, detail="Invitation not found")
@@ -76,8 +97,7 @@ def reject_invite(
     if not is_invited_user:
         raise HTTPException(status_code=403, detail="You cannot reject this invitation")
     
-    if invite.status != "PENDING":
-        raise HTTPException(status_code=400, detail="Invitation is not pending")
+    ensure_pending_invite(invite, db)
     
     invite.status = "REJECTED"
     invite.responded_at = utc_now()
@@ -95,7 +115,12 @@ def accept_invite(
     
     user_email = current_user.email.lower().strip()
 
-    invite = db.query(Invitation).filter(Invitation.id == invite_id).first()
+    invite = (
+        db.query(Invitation)
+        .filter(Invitation.id == invite_id)
+        .with_for_update()
+        .first()
+    )
 
     if not invite:
         raise HTTPException(status_code=404, detail="Invitation not found")
@@ -108,18 +133,33 @@ def accept_invite(
     if not is_invited_user:
         raise HTTPException(status_code=403, detail="You cannot accept this invitation")
     
-    if invite.status != "PENDING":
-        raise HTTPException(status_code=400, detail="Invitation is not pending")
+    ensure_pending_invite(invite, db)
     
     open_space = db.query(OpenSpace).filter(OpenSpace.id == invite.open_space_id).first()
 
     if not open_space:
         raise HTTPException(status_code=404, detail="Open space not found")
+
+    if not open_space.is_active:
+        raise HTTPException(status_code=400, detail="Open space is inactive")
     
     existing_membership = db.query(Membership).filter(
         Membership.user_id == current_user.id,
         Membership.open_space_id == invite.open_space_id
     ).first()
+
+    if existing_membership and existing_membership.status == "ACTIVE":
+        invite.status = "ACCEPTED"
+        invite.responded_at = utc_now()
+
+        if invite.invited_user_id is None:
+            invite.invited_user_id = current_user.id
+
+        db.commit()
+        return
+
+    if existing_membership:
+        raise HTTPException(status_code=400, detail="Membership already exists")
 
     if not existing_membership:
         new_membership = Membership(
@@ -137,6 +177,10 @@ def accept_invite(
     if invite.invited_user_id is None:
         invite.invited_user_id = current_user.id
     
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Membership already exists")
 
     return

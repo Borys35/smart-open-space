@@ -1,5 +1,4 @@
 INSERT INTO roles (name) VALUES ('SUPER_ADMIN') ON CONFLICT (name) DO NOTHING;
-INSERT INTO roles (name) VALUES ('MANAGER') ON CONFLICT (name) DO NOTHING;
 INSERT INTO roles (name) VALUES ('USER') ON CONFLICT (name) DO NOTHING;
 
 INSERT INTO users (username, email, password_hash, role_id, is_active)

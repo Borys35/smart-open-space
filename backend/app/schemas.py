@@ -5,7 +5,6 @@ from datetime import datetime
 # Role użytkowników w systemie
 class RoleEnum(str, Enum):
     USER = "USER"
-    MANAGER = "MANAGER"
     SUPER_ADMIN = "SUPER_ADMIN"
 
 # Request do rejestracji
@@ -67,7 +66,7 @@ class DashboardUserResponse(BaseModel):
     id: int
     username: str
     email: str
-    role: RoleEnum
+    role: str
 
 # Response logowania do dashboardu
 class DashboardLoginResponse(BaseModel):

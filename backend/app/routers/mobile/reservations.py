@@ -2,6 +2,8 @@ from math import ceil
 from datetime import date, datetime, time, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload
 
 from app.constants import (
@@ -140,6 +142,26 @@ def get_active_membership(db: Session, user_id: int, open_space_id: int):
         Membership.status == "ACTIVE"
     ).first()
 
+def get_locked_active_membership(db: Session, user_id: int, open_space_id: int):
+    return db.query(Membership).filter(
+        Membership.user_id == user_id,
+        Membership.open_space_id == open_space_id,
+        Membership.status == "ACTIVE"
+    ).with_for_update().first()
+
+def lock_desk_reservation_schedule(db: Session, desk_id: int):
+    db.execute(
+        text("SELECT pg_advisory_xact_lock(71001, :desk_id)"),
+        {"desk_id": desk_id}
+    )
+
+def commit_or_rollback(db: Session):
+    try:
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Could not save reservation changes")
+
 @router.post("", response_model=ReservationResponse, status_code=201)
 def create_reservation(
     data: ReservationCreate,
@@ -159,12 +181,10 @@ def create_reservation(
     
     if end_time <= start_time:
         raise HTTPException(status_code=400, detail="End time must be after start time")
+
+    lock_desk_reservation_schedule(db, data.desk_id)
     
-    membership = db.query(Membership).filter(
-        Membership.user_id == current_user.id,
-        Membership.open_space_id == desk.open_space_id,
-        Membership.status == "ACTIVE" 
-        ).first()
+    membership = get_locked_active_membership(db, current_user.id, desk.open_space_id)
 
     if not membership:
         raise HTTPException(status_code=403, detail="You are not a member of this open space")
@@ -227,7 +247,7 @@ def create_reservation(
 
     db.add(new_reservation)
     db.add(new_transaction)
-    db.commit()
+    commit_or_rollback(db)
     db.refresh(new_reservation)
 
     return serialize_reservation(new_reservation)
@@ -338,7 +358,12 @@ def cancel_reservation(
     current_user: User = Depends(get_current_user)
 ): 
     
-    reservation = db.query(Reservation).filter(Reservation.id == reservation_id).first()
+    reservation = (
+        db.query(Reservation)
+        .filter(Reservation.id == reservation_id)
+        .with_for_update()
+        .first()
+    )
 
     if not reservation:
         raise HTTPException(status_code=404, detail="Reservation not found")
@@ -348,8 +373,16 @@ def cancel_reservation(
     
     if reservation.status in FINISHED_RESERVATION_STATUSES:
         raise HTTPException(status_code=400, detail="Reservation cannot be cancelled")
+
+    if reservation.checked_in_at is not None:
+        raise HTTPException(status_code=400, detail="Checked-in reservation cannot be cancelled")
     
-    membership = db.query(Membership).filter(Membership.id == reservation.membership_id).first()
+    membership = (
+        db.query(Membership)
+        .filter(Membership.id == reservation.membership_id)
+        .with_for_update()
+        .first()
+    )
 
     if not membership:
         raise HTTPException(status_code=404, detail="Membership not found")
@@ -366,7 +399,7 @@ def cancel_reservation(
     )
 
     db.add(refund_transaction)
-    db.commit()
+    commit_or_rollback(db)
 
     return
 
@@ -380,7 +413,12 @@ def update_reservation_time(
     start_time = to_utc(data.start_time)
     end_time = to_utc(data.end_time)
 
-    reservation = db.query(Reservation).filter(Reservation.id == reservation_id).first()
+    reservation = (
+        db.query(Reservation)
+        .filter(Reservation.id == reservation_id)
+        .with_for_update()
+        .first()
+    )
 
     if not reservation:
         raise HTTPException(status_code=404, detail="Reservation not found")
@@ -390,6 +428,9 @@ def update_reservation_time(
 
     if reservation.status in FINISHED_RESERVATION_STATUSES:
         raise HTTPException(status_code=400, detail="Reservation time cannot be changed")
+
+    if reservation.checked_in_at is not None:
+        raise HTTPException(status_code=400, detail="Checked-in reservation time cannot be changed")
 
     if end_time <= start_time:
         raise HTTPException(status_code=400, detail="End time must be after start time")
@@ -402,11 +443,13 @@ def update_reservation_time(
     if desk.status != "AVAILABLE":
         raise HTTPException(status_code=400, detail="Desk is not available")
 
+    lock_desk_reservation_schedule(db, reservation.desk_id)
+
     membership = db.query(Membership).filter(
         Membership.id == reservation.membership_id,
         Membership.user_id == current_user.id,
         Membership.status == "ACTIVE"
-    ).first()
+    ).with_for_update().first()
 
     if not membership:
         raise HTTPException(status_code=404, detail="Membership not found")
@@ -475,7 +518,7 @@ def update_reservation_time(
     reservation.credit_cost = new_credit_cost
     reservation.updated_at = utc_now()
 
-    db.commit()
+    commit_or_rollback(db)
     db.refresh(reservation)
 
     return serialize_reservation(reservation)

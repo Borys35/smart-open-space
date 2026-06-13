@@ -1,15 +1,14 @@
 from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.constants import (
+    ALL_RESERVATION_STATUSES,
     CREDIT_TRANSACTION_REFUND,
     RESERVATION_STATUS_CANCELLED,
-    RESERVATION_STATUS_CONFIRMED,
-    RESERVATION_STATUS_DONE,
-    RESERVATION_STATUS_NO_SHOW,
-    RESERVATION_STATUS_PENDING
+    FINISHED_RESERVATION_STATUSES
 )
 from app.datetime_utils import as_utc, to_utc
 from app.dependencies import get_db, is_super_admin, require_dashboard_access
@@ -46,14 +45,7 @@ def get_open_space_reservations(
     if sort not in allowed_sort_values :
         raise HTTPException(status_code=400, detail="Invalid sort value")
     
-    allowed_status_values = [
-        RESERVATION_STATUS_PENDING,
-        RESERVATION_STATUS_CONFIRMED,
-        RESERVATION_STATUS_CANCELLED,
-        RESERVATION_STATUS_DONE,
-        RESERVATION_STATUS_NO_SHOW
-    ]
-    if status is not None and status not in allowed_status_values:
+    if status is not None and status not in ALL_RESERVATION_STATUSES:
         raise HTTPException(status_code=400, detail="Invalid reservation status")
     
     if date_from is not None and date_to is not None:
@@ -227,19 +219,25 @@ def cancel_reservation_by_manager(
     ).filter(
         Reservation.id == reservation_id,
         Desk.open_space_id == open_space_id
-    ).first()
+    ).with_for_update().first()
 
     if not row:
         raise HTTPException(status_code=404, detail="Reservation not found")
     
     reservation, desk = row
 
-    not_cancellable_statuses = [RESERVATION_STATUS_CANCELLED, RESERVATION_STATUS_DONE, RESERVATION_STATUS_NO_SHOW]
-
-    if reservation.status in not_cancellable_statuses:
+    if reservation.status in FINISHED_RESERVATION_STATUSES:
         raise HTTPException(status_code=400, detail="Reservation cannot be cancelled")
+
+    if reservation.checked_in_at is not None:
+        raise HTTPException(status_code=400, detail="Checked-in reservation cannot be cancelled")
     
-    membership = db.query(Membership).filter(Membership.id == reservation.membership_id).first()
+    membership = (
+        db.query(Membership)
+        .filter(Membership.id == reservation.membership_id)
+        .with_for_update()
+        .first()
+    )
 
     if not membership:
         raise HTTPException(status_code=404, detail="Membership not found")
@@ -261,6 +259,11 @@ def cancel_reservation_by_manager(
     )
 
     db.add(refund_transaction)
-    db.commit()
+
+    try:
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Could not cancel reservation")
 
     return

@@ -34,11 +34,11 @@ def get_or_create_role(session, role_name: str) -> Role:
     return role
 
 
-def get_or_create_inviter(session, manager_role_id: int, token: str, password_hash: str) -> User:
+def get_or_create_inviter(session, super_admin_role_id: int, token: str, password_hash: str) -> User:
     existing = (
         session.query(User)
         .join(Role, Role.id == User.role_id)
-        .filter(and_(Role.name.in_(["SUPER_ADMIN", "MANAGER"]), User.is_active.is_(True)))
+        .filter(and_(Role.name == "SUPER_ADMIN", User.is_active.is_(True)))
         .order_by(User.id.asc())
         .first()
     )
@@ -46,10 +46,10 @@ def get_or_create_inviter(session, manager_role_id: int, token: str, password_ha
         return existing
 
     inviter = User(
-        username=f"manager_{token}",
-        email=f"manager_{token}@dummy.local",
+        username=f"admin_{token}",
+        email=f"admin_{token}@dummy.local",
         password_hash=password_hash,
-        role_id=manager_role_id,
+        role_id=super_admin_role_id,
         is_active=True,
     )
     session.add(inviter)
@@ -324,10 +324,9 @@ def main() -> None:
     session = SessionLocal()
     try:
         user_role = get_or_create_role(session, "USER")
-        manager_role = get_or_create_role(session, "MANAGER")
-        get_or_create_role(session, "SUPER_ADMIN")
+        super_admin_role = get_or_create_role(session, "SUPER_ADMIN")
 
-        inviter = get_or_create_inviter(session, manager_role.id, token, password_hash)
+        inviter = get_or_create_inviter(session, super_admin_role.id, token, password_hash)
         open_space = get_or_create_open_space(session, token, args.open_space_name, args.building)
 
         desks = create_desks(session, open_space, args.desks)
