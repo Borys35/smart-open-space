@@ -1,0 +1,7 @@
+<resources>
+  <string name="app_name">Smart Open Space</string>
+  <string name="hce_service_description">Smart Open Space gate credential</string>
+  <string name="hce_aid_group">Smart Open Space gate access</string>
+  <string name="expo_system_ui_user_interface_style" translatable="false">automatic</string>
+  <string name="expo_splash_screen_resize_mode" translatable="false">contain</string>
+</resources>

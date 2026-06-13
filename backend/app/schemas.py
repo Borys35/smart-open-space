@@ -227,6 +227,67 @@ class SensorAccessCheckRequest(BaseModel):
 
         return value
 
+class SensorPhoneAccessCheckRequest(BaseModel):
+    device_key: str
+    credential_id: str
+    nonce: str
+    signature: str
+
+    @field_validator("device_key", "credential_id", "nonce", "signature")
+    @classmethod
+    def validate_not_empty(cls, value) -> str:
+        value = value.strip()
+
+        if not value:
+            raise ValueError("Field cannot be empty")
+
+        return value
+
+    @field_validator("credential_id")
+    @classmethod
+    def validate_credential_id(cls, value) -> str:
+        value = value.replace("-", "").lower()
+
+        if len(value) != 32:
+            raise ValueError("Credential ID must be 16 bytes encoded as hex")
+
+        try:
+            bytes.fromhex(value)
+        except ValueError:
+            raise ValueError("Credential ID must be hex")
+
+        return value
+
+    @field_validator("nonce")
+    @classmethod
+    def validate_nonce(cls, value) -> str:
+        value = value.replace(" ", "").lower()
+
+        if len(value) != 16:
+            raise ValueError("Nonce must be 8 bytes encoded as hex")
+
+        try:
+            bytes.fromhex(value)
+        except ValueError:
+            raise ValueError("Nonce must be hex")
+
+        return value
+
+    @field_validator("signature")
+    @classmethod
+    def validate_signature(cls, value) -> str:
+        value = value.replace(" ", "").lower()
+
+        if len(value) != 64:
+            raise ValueError("Signature must be 32 bytes encoded as hex")
+
+        try:
+            bytes.fromhex(value)
+        except ValueError:
+            raise ValueError("Signature must be hex")
+
+        return value
+
 class SensorAccessCheckResponse(BaseModel):
     allowed: bool
     action: str | None = None

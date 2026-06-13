@@ -1,3 +1,5 @@
+import hmac
+
 from app.constants import RESERVATION_STATUS_CONFIRMED, RESERVATION_STATUS_DONE
 from app.datetime_utils import as_utc, utc_now
 from app.dependencies import get_db
@@ -11,6 +13,7 @@ from app.models import (
     Reservation,
 )
 from app.schemas import SensorAccessCheckRequest, SensorAccessCheckResponse
+from app.schemas import SensorPhoneAccessCheckRequest
 from app.services.penalty_service import apply_late_checkout_penalty
 from fastapi import APIRouter, Depends
 from sqlalchemy import or_
@@ -60,8 +63,6 @@ def deny_response(
 
 @router.post("/check", response_model=SensorAccessCheckResponse)
 def check_access(data: SensorAccessCheckRequest, db: Session = Depends(get_db)):
-    now = utc_now()
-
     device = (
         db.query(AccessDevice)
         .filter(AccessDevice.device_key == data.device_key, AccessDevice.is_active)
@@ -90,6 +91,69 @@ def check_access(data: SensorAccessCheckRequest, db: Session = Depends(get_db)):
 
     if not credential:
         return deny_response("Access credential not found or inactive", device=device)
+
+    return check_credential_access(db, device, credential)
+
+
+@router.post("/phone/check", response_model=SensorAccessCheckResponse)
+def check_phone_access(
+    data: SensorPhoneAccessCheckRequest, db: Session = Depends(get_db)
+):
+    device = (
+        db.query(AccessDevice)
+        .filter(AccessDevice.device_key == data.device_key, AccessDevice.is_active)
+        .first()
+    )
+
+    if not device:
+        return deny_response("Access device not found or inactive")
+
+    credential_id = (
+        f"{data.credential_id[0:8]}-{data.credential_id[8:12]}-"
+        f"{data.credential_id[12:16]}-{data.credential_id[16:20]}-"
+        f"{data.credential_id[20:32]}"
+    )
+
+    credential = (
+        db.query(AccessCredential)
+        .filter(
+            AccessCredential.mobile_credential_id == credential_id,
+            AccessCredential.cred_type == "PHONE",
+            AccessCredential.active,
+        )
+        .first()
+    )
+
+    if not credential or not credential.shared_secret_hash:
+        return deny_response("Phone credential not found or inactive", device=device)
+
+    expected_signature = hmac.digest(
+        bytes.fromhex(credential.shared_secret_hash),
+        bytes.fromhex(data.nonce),
+        "sha256",
+    ).hex()
+
+    if not hmac.compare_digest(expected_signature, data.signature):
+        create_access_log(db, credential, device, "IDENTITY_VERIFICATION", "DENIED")
+        db.commit()
+        return deny_response("Phone credential signature is invalid", device, credential)
+
+    return check_credential_access(db, device, credential)
+
+
+def check_credential_access(
+    db: Session,
+    device: AccessDevice,
+    credential: AccessCredential,
+):
+    now = utc_now()
+
+    open_space = (
+        db.query(OpenSpace).filter(OpenSpace.id == device.open_space_id).first()
+    )
+
+    if not open_space or not open_space.is_active:
+        return deny_response("Open space not found or inactive", device=device)
 
     membership = (
         db.query(Membership)

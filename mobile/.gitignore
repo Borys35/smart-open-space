@@ -40,7 +40,35 @@ app-example
 
 # generated native folders
 /ios
-/android
+/android/*
+!/android/app/
+/android/app/*
+!/android/app/src/
+/android/app/src/*
+!/android/app/src/main/
+/android/app/src/main/*
+!/android/app/src/main/AndroidManifest.xml
+!/android/app/src/main/java/
+/android/app/src/main/java/*
+!/android/app/src/main/java/com/
+/android/app/src/main/java/com/*
+!/android/app/src/main/java/com/ziuty/
+/android/app/src/main/java/com/ziuty/*
+!/android/app/src/main/java/com/ziuty/smart_open_space/
+/android/app/src/main/java/com/ziuty/smart_open_space/*
+!/android/app/src/main/java/com/ziuty/smart_open_space/GateCredentialModule.kt
+!/android/app/src/main/java/com/ziuty/smart_open_space/GateCredentialPackage.kt
+!/android/app/src/main/java/com/ziuty/smart_open_space/GateCredentialStore.kt
+!/android/app/src/main/java/com/ziuty/smart_open_space/GateHceService.kt
+!/android/app/src/main/java/com/ziuty/smart_open_space/MainApplication.kt
+!/android/app/src/main/res/
+/android/app/src/main/res/*
+!/android/app/src/main/res/values/
+/android/app/src/main/res/values/*
+!/android/app/src/main/res/values/strings.xml
+!/android/app/src/main/res/xml/
+/android/app/src/main/res/xml/*
+!/android/app/src/main/res/xml/apduservice.xml
 
 # firebase credentials
 credentials.json
