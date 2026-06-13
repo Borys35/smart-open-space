@@ -17,6 +17,8 @@ export type OpenSpace = {
     max_daily_hours: number;
     period_credits: number;
     credit_reset_period: string;
+    late_checkout_penalty_hours: number;
+    no_show_penalty_hours: number;
 };
 
 type OpenSpaceContextType = {

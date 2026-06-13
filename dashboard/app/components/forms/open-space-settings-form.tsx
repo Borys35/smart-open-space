@@ -37,6 +37,8 @@ const openSpaceSchema = z.object({
     max_daily_hours: z.coerce.number({ invalid_type_error: "Max daily hours must be a number" }).min(1, "Max daily hours must be greater than 0"),
     period_credits: z.coerce.number({ invalid_type_error: "Period credits must be a number" }),
     credit_reset_period: z.string().min(1, "Credit reset period is required").transform((value) => value.trim().toUpperCase()).refine((value) => ["WEEKLY", "MONTHLY"].includes(value), "Credit reset period must be WEEKLY or MONTHLY"),
+    late_checkout_penalty_hours: z.coerce.number({ invalid_type_error: "Late checkout penalty hours must be a number" }).min(0, "Late checkout penalty hours cannot be negative"),
+    no_show_penalty_hours: z.coerce.number({ invalid_type_error: "No show penalty hours must be a number" }).min(0, "No show penalty hours cannot be negative"),
 })
 
 type OpenSpaceFormInput = z.input<typeof openSpaceSchema>
@@ -72,6 +74,8 @@ export function OpenSpaceSettingsForm({
             max_daily_hours: 0,
             period_credits: 0,
             credit_reset_period: "WEEKLY",
+            late_checkout_penalty_hours: 0,
+            no_show_penalty_hours: 0,
         },
     })
 
@@ -95,6 +99,8 @@ export function OpenSpaceSettingsForm({
             max_daily_hours: currentOpenSpace.max_daily_hours ?? 0,
             period_credits: currentOpenSpace.period_credits ?? 0,
             credit_reset_period: currentOpenSpace.credit_reset_period ?? "WEEKLY",
+            late_checkout_penalty_hours: currentOpenSpace.late_checkout_penalty_hours ?? 0,
+            no_show_penalty_hours: currentOpenSpace.no_show_penalty_hours ?? 0,
         })
     }, [currentOpenSpace, reset])
 
@@ -322,6 +328,38 @@ export function OpenSpaceSettingsForm({
                                     />
                                     {errors.period_credits && (
                                         <p className="text-sm font-medium text-destructive">{errors.period_credits.message}</p>
+                                    )}
+                                </Field>
+
+                                <Field>
+                                    <FieldLabel htmlFor="late_checkout_penalty_hours">Late Checkout Penalty Hours</FieldLabel>
+                                    <Input
+                                        {...register("late_checkout_penalty_hours")}
+                                        id="late_checkout_penalty_hours"
+                                        type="number"
+                                        placeholder="e.g., 50"
+
+                                        required
+                                        disabled={isSubmitting}
+                                    />
+                                    {errors.late_checkout_penalty_hours && (
+                                        <p className="text-sm font-medium text-destructive">{errors.late_checkout_penalty_hours.message}</p>
+                                    )}
+                                </Field>
+
+                                <Field>
+                                    <FieldLabel htmlFor="no_show_penalty_hours">No Show Penalty Hours</FieldLabel>
+                                    <Input
+                                        {...register("no_show_penalty_hours")}
+                                        id="no_show_penalty_hours"
+                                        type="number"
+                                        placeholder="e.g., 50"
+
+                                        required
+                                        disabled={isSubmitting}
+                                    />
+                                    {errors.no_show_penalty_hours && (
+                                        <p className="text-sm font-medium text-destructive">{errors.no_show_penalty_hours.message}</p>
                                     )}
                                 </Field>
 
