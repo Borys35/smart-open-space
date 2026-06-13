@@ -1,5 +1,10 @@
 import { useDeskAvailability } from "@/hooks/use-open-spaces";
-import { formatOrdinal, formatSchedule } from "@/lib/fmt";
+import {
+  formatOrdinal,
+  formatSchedule,
+  getTodayScheduleWindow,
+  isWithinSchedule,
+} from "@/lib/fmt";
 import { DEFAULT_OPEN_SPACE_IMAGE_URL } from "@/lib/open-space-images";
 import { Button } from "@ssobkowski/rnui/button";
 import { ClockIconStroke, MapPinStroke } from "@ssobkowski/rnui/icons";
@@ -28,52 +33,12 @@ const BADGE_COLORS = {
   },
 } as const;
 
-function parseTimeParts(time: string | null | undefined, fallbackHour: number, fallbackMinute = 0) {
-  const [hour, minute] = (time ?? "").split(":").map(Number);
-
-  return {
-    hour: Number.isFinite(hour) ? hour : fallbackHour,
-    minute: Number.isFinite(minute) ? minute : fallbackMinute,
-  };
-}
-
 function getTodayAvailabilityWindow(openSpace: MobileOpenSpaceSummary) {
-  const now = new Date();
-  const start = new Date(now);
-  const end = new Date(now);
-  const opens = parseTimeParts(openSpace.opened_at, 9);
-  const closes = parseTimeParts(openSpace.closed_at, 17);
-
-  start.setHours(opens.hour, opens.minute, 0, 0);
-  end.setHours(closes.hour, closes.minute, 0, 0);
-
-  if (end <= start) {
-    end.setDate(end.getDate() + 1);
-  }
-
-  return {
-    startTime: start.toISOString(),
-    endTime: end.toISOString(),
-  };
+  return getTodayScheduleWindow(openSpace.opened_at, openSpace.closed_at);
 }
 
 function isOpenNow(openSpace: MobileOpenSpaceSummary) {
-  const now = new Date();
-  const opens = parseTimeParts(openSpace.opened_at, 9);
-  const closes = parseTimeParts(openSpace.closed_at, 17);
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  const openMinutes = opens.hour * 60 + opens.minute;
-  const closeMinutes = closes.hour * 60 + closes.minute;
-
-  if (openMinutes === closeMinutes) {
-    return true;
-  }
-
-  if (closeMinutes < openMinutes) {
-    return currentMinutes >= openMinutes || currentMinutes < closeMinutes;
-  }
-
-  return currentMinutes >= openMinutes && currentMinutes < closeMinutes;
+  return isWithinSchedule(openSpace.opened_at, openSpace.closed_at);
 }
 
 function getDeskAvailabilityBadge(availableDesks: number, totalDesks: number, hasError: boolean) {

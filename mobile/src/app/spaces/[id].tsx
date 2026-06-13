@@ -6,7 +6,7 @@ import {
   useDeskAvailability,
   useOpenSpaceDetails,
 } from "@/hooks/use-open-spaces";
-import { formatSchedule } from "@/lib/fmt";
+import { formatSchedule, getTodayScheduleWindow } from "@/lib/fmt";
 import { DEFAULT_OPEN_SPACE_IMAGE_URL } from "@/lib/open-space-images";
 import { ReservationModal } from "@/pages/open-spaces/reservation-modal";
 import { Button } from "@ssobkowski/rnui/button";
@@ -30,31 +30,7 @@ function parseOpenSpaceId(id: string | string[] | undefined) {
 }
 
 function getTodayAvailabilityWindow(openSpace?: MobileOpenSpaceSummary) {
-  const now = new Date();
-  const start = new Date(now);
-  const end = new Date(now);
-  const [startHour, startMinute] = (openSpace?.opened_at ?? "09:00").split(":").map(Number);
-  const [endHour, endMinute] = (openSpace?.closed_at ?? "17:00").split(":").map(Number);
-
-  start.setHours(
-    Number.isFinite(startHour) ? startHour : 9,
-    Number.isFinite(startMinute) ? startMinute : 0,
-    0,
-    0,
-  );
-  end.setHours(
-    Number.isFinite(endHour) ? endHour : 17,
-    Number.isFinite(endMinute) ? endMinute : 0,
-    0,
-    0,
-  );
-
-  if (end <= start) end.setDate(end.getDate() + 1);
-
-  return {
-    startTime: start.toISOString(),
-    endTime: end.toISOString(),
-  };
+  return getTodayScheduleWindow(openSpace?.opened_at, openSpace?.closed_at);
 }
 
 function getLocation(openSpace: MobileOpenSpaceSummary) {
