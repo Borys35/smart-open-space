@@ -1,19 +1,23 @@
 import { useAuth } from "@/hooks/use-auth";
+import { useLinkedCard, useUnlinkCard } from "@/hooks/use-cards";
 import { useInvites, useRespondToInvite } from "@/hooks/use-invites";
+import { useActiveReservations } from "@/hooks/use-open-spaces";
+import { AccountModal } from "@/pages/home/account-modal";
 import { CardButton } from "@/pages/home/card-button";
-import { MissingCardModal } from "@/pages/home/missing-card-modal";
+import { ReservationCard, ReservationCardSkeleton } from "@/pages/reservations/card";
+import { Button } from "@ssobkowski/rnui/button";
+import { DotGridVerticalIcon } from "@ssobkowski/rnui/icons";
+import { Skeleton } from "@ssobkowski/rnui/skeleton";
+import { Text } from "@ssobkowski/rnui/text";
 import * as Notifications from "expo-notifications";
-import { useEffect, useRef } from "react";
-import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { router } from "expo-router";
+import { useEffect, useMemo, useRef } from "react";
+import { ActivityIndicator, ScrollView, View } from "react-native";
+import Animated, { LinearTransition } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { StyleSheet, useUnistyles } from "react-native-unistyles";
 
+import type { Invitation } from "@/hooks/use-invites";
 import type { MobileOpenSpaceSummary } from "@/hooks/use-open-spaces";
 import type { ModalRef } from "@ssobkowski/rnui/modal";
 
@@ -29,19 +33,116 @@ function getOpenSpaceLocation(openSpace: MobileOpenSpaceSummary | null) {
     `Floor ${openSpace.floor}`,
   ]
     .filter(Boolean)
-    .join(" • ");
+    .join(" ∙ ");
+}
+
+function InviteCard({
+  invitation,
+  isResponding,
+  onAccept,
+  onReject,
+  acceptError,
+  rejectError,
+  acceptingId,
+  rejectingId,
+}: {
+  invitation: Invitation;
+  isResponding: boolean;
+  onAccept: (id: number) => void;
+  onReject: (id: number) => void;
+  acceptError: Error | null;
+  rejectError: Error | null;
+  acceptingId?: number;
+  rejectingId?: number;
+}) {
+  const openSpace = invitation.open_space;
+  const spaceTitle = openSpace?.name ?? `Open space #${invitation.space_id}`;
+  const spaceLocation = getOpenSpaceLocation(openSpace);
+  const isAccepting = acceptingId === invitation.id;
+  const isRejecting = rejectingId === invitation.id;
+  const actionError =
+    acceptError && isAccepting ? acceptError : rejectError && isRejecting ? rejectError : null;
+
+  return (
+    <View style={styles.inviteCard}>
+      <View style={styles.inviteCopy}>
+        <Text size="xl" weight="medium" numberOfLines={2}>
+          {spaceTitle}
+        </Text>
+        {spaceLocation ? (
+          <Text tone="text.secondary" numberOfLines={2}>
+            {spaceLocation}
+          </Text>
+        ) : null}
+        <Text tone="text.secondary" size="sm" numberOfLines={1}>
+          Invited as {invitation.invited_email}
+        </Text>
+      </View>
+
+      {actionError ? (
+        <Text color="#D92D20" size="sm">
+          {actionError.message}
+        </Text>
+      ) : null}
+
+      <View style={styles.inviteActions}>
+        <Button
+          variant="secondary"
+          disabled={isResponding}
+          style={styles.inviteButton}
+          onPress={() => onReject(invitation.id)}
+        >
+          {isRejecting ? (
+            <ActivityIndicator color="black" />
+          ) : (
+            <Text size="lg" weight="medium" color="black">
+              Decline
+            </Text>
+          )}
+        </Button>
+
+        <Button
+          variant="primary"
+          disabled={isResponding}
+          style={[styles.inviteButton, styles.acceptButton]}
+          onPress={() => onAccept(invitation.id)}
+        >
+          {isAccepting ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text size="lg" weight="medium" color="white">
+              Accept
+            </Text>
+          )}
+        </Button>
+      </View>
+    </View>
+  );
 }
 
 export default function Home() {
+  const { theme } = useUnistyles();
   const { user, logout } = useAuth();
   const invitations = useInvites(user?.id ?? null);
+  const reservations = useActiveReservations();
+  const linkedCard = useLinkedCard();
+  const unlinkCard = useUnlinkCard();
   const acceptInvite = useRespondToInvite(user?.id ?? null, "accept");
   const rejectInvite = useRespondToInvite(user?.id ?? null, "reject");
-  const missingCardModalRef = useRef<ModalRef>(null);
+  const accountModalRef = useRef<ModalRef>(null);
   const isResponding = acceptInvite.isPending || rejectInvite.isPending;
+  const nextReservation = useMemo(() => reservations.data[0] ?? null, [reservations.data]);
+  const hasLinkedCard = Boolean(linkedCard.data);
+  const shouldShowInvites =
+    invitations.isPending || invitations.isError || (invitations.data?.length ?? 0) > 0;
 
-  const handleLogout = () => {
-    logout();
+  const openCardScanner = () => {
+    router.push("/nfc-card");
+  };
+
+  const handleUnlinkCard = () => {
+    accountModalRef.current?.dismiss();
+    unlinkCard.mutate();
   };
 
   useEffect(() => {
@@ -59,282 +160,238 @@ export default function Home() {
   }, []);
 
   if (!user) {
-    return;
+    return null;
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <CardButton
-        style={styles.cardButton}
-        onPress={() => missingCardModalRef.current?.present()}
-      />
-      <MissingCardModal ref={missingCardModalRef} />
-
-      <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Home</Text>
-
-        <View style={styles.card}>
-          <Text style={styles.greeting} selectable>
-            Authenticated as {user.username}
+    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        <View style={styles.header}>
+          <Text header size="3xl" weight="medium" numberOfLines={1} style={styles.username}>
+            {user.username}
           </Text>
-          <Text style={styles.email} selectable>
-            {user.email}
-          </Text>
-          <Text style={styles.role} selectable>
-            Role: {user.role}
-          </Text>
+          <Button
+            accessibilityLabel="Open account menu"
+            variant="icon"
+            hitSlop={16}
+            onPress={() => accountModalRef.current?.present()}
+          >
+            <DotGridVerticalIcon color={theme.colors.text.secondary} size={24} />
+          </Button>
         </View>
+
+        {shouldShowInvites ? (
+          <>
+            <View style={styles.sectionHeader}>
+              <Text header size="2xl" weight="medium">
+                Invites
+              </Text>
+              {invitations.data ? (
+                <Text tone="text.secondary" style={styles.counter}>
+                  {invitations.data.length}
+                </Text>
+              ) : null}
+            </View>
+
+            {invitations.isPending ? (
+              <View style={styles.list}>
+                <InviteSkeleton />
+                <InviteSkeleton />
+              </View>
+            ) : invitations.isError ? (
+              <StateBlock
+                title="We couldn't load your invites right now"
+                detail="Please try again in a moment."
+                actionLabel="Try Again"
+                onAction={() => invitations.refetch()}
+              />
+            ) : (
+              <Animated.View layout={LinearTransition} style={styles.list}>
+                {invitations.data.map((invitation) => (
+                  <InviteCard
+                    key={invitation.id}
+                    invitation={invitation}
+                    isResponding={isResponding}
+                    onAccept={acceptInvite.mutate}
+                    onReject={rejectInvite.mutate}
+                    acceptError={acceptInvite.error}
+                    rejectError={rejectInvite.error}
+                    acceptingId={acceptInvite.variables}
+                    rejectingId={rejectInvite.variables}
+                  />
+                ))}
+              </Animated.View>
+            )}
+          </>
+        ) : null}
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Pending invitations</Text>
-          {invitations.data ? <Text style={styles.counter}>{invitations.data.length}</Text> : null}
+          <Text header size="2xl" weight="medium">
+            Next reservation
+          </Text>
         </View>
 
-        {invitations.isPending ? (
-          <View style={styles.inviteState}>
-            <ActivityIndicator color="#007AFF" />
-            <Text style={styles.stateText}>Loading invitations...</Text>
-          </View>
-        ) : invitations.isError ? (
-          <View style={styles.inviteState}>
-            <Text style={styles.error} selectable>
-              {invitations.error.message}
-            </Text>
-            <TouchableOpacity style={styles.retryButton} onPress={() => invitations.refetch()}>
-              <Text style={styles.retryButtonText}>Try Again</Text>
-            </TouchableOpacity>
-          </View>
-        ) : invitations.data.length === 0 ? (
-          <View style={styles.inviteState}>
-            <Text style={styles.stateText}>You do not have any pending invitations.</Text>
-          </View>
+        {reservations.isPending ? (
+          <ReservationCardSkeleton />
+        ) : reservations.isError ? (
+          <StateBlock
+            title="We couldn't load your reservations right now"
+            detail="Please try again in a moment."
+            actionLabel="Try Again"
+            onAction={() => reservations.refetch()}
+          />
+        ) : nextReservation ? (
+          <ReservationCard reservation={nextReservation} />
         ) : (
-          invitations.data.map((invitation) => {
-            const openSpace = invitation.open_space;
-            const spaceTitle = openSpace?.name ?? `Open space #${invitation.space_id}`;
-            const spaceLocation = getOpenSpaceLocation(openSpace);
-            const isAccepting = acceptInvite.isPending && acceptInvite.variables === invitation.id;
-            const isRejecting = rejectInvite.isPending && rejectInvite.variables === invitation.id;
-            const actionError =
-              acceptInvite.error && acceptInvite.variables === invitation.id
-                ? acceptInvite.error
-                : rejectInvite.error && rejectInvite.variables === invitation.id
-                  ? rejectInvite.error
-                  : null;
-
-            return (
-              <View key={invitation.id} style={styles.inviteCard}>
-                <Text style={styles.inviteTitle} selectable>
-                  {spaceTitle}
-                </Text>
-                {spaceLocation ? (
-                  <Text style={styles.inviteLocation} selectable>
-                    {spaceLocation}
-                  </Text>
-                ) : null}
-                <View style={styles.inviteMeta}>
-                  <Text style={styles.inviteDetail} selectable>
-                    Invite #{invitation.id}
-                  </Text>
-                  <Text style={styles.inviteDetail} selectable>
-                    {invitation.invited_email}
-                  </Text>
-                </View>
-
-                {actionError ? (
-                  <Text style={styles.actionError} selectable>
-                    {actionError.message}
-                  </Text>
-                ) : null}
-
-                <View style={styles.actions}>
-                  <TouchableOpacity
-                    style={[styles.actionButton, styles.rejectButton]}
-                    onPress={() => rejectInvite.mutate(invitation.id)}
-                    disabled={isResponding}
-                  >
-                    {isRejecting ? (
-                      <ActivityIndicator color="#3A3A3C" />
-                    ) : (
-                      <Text style={styles.rejectButtonText}>Decline</Text>
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.actionButton, styles.acceptButton]}
-                    onPress={() => acceptInvite.mutate(invitation.id)}
-                    disabled={isResponding}
-                  >
-                    {isAccepting ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <Text style={styles.acceptButtonText}>Accept</Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </View>
-            );
-          })
+          <StateBlock
+            title="No upcoming reservations"
+            detail="Your next booked desk will show up here."
+          />
         )}
-
-        <TouchableOpacity style={styles.button} onPress={handleLogout}>
-          <Text style={styles.buttonText}>Log Out</Text>
-        </TouchableOpacity>
       </ScrollView>
+
+      {!hasLinkedCard && !linkedCard.isPending ? (
+        <CardButton style={styles.cardButton} onPress={openCardScanner} />
+      ) : null}
+
+      <AccountModal
+        ref={accountModalRef}
+        hasLinkedCard={hasLinkedCard}
+        isUnlinking={unlinkCard.isPending}
+        onLinkCard={openCardScanner}
+        onUnlinkCard={handleUnlinkCard}
+        onLogout={logout}
+      />
     </SafeAreaView>
+  );
+}
+
+function InviteSkeleton() {
+  return (
+    <View style={styles.inviteCard}>
+      <Skeleton width={190} height={24} color="#E6E8EC" style={{ borderRadius: 999 }} />
+      <Skeleton width={240} height={18} color="#E6E8EC" style={{ borderRadius: 999 }} />
+      <View style={styles.inviteActions}>
+        <Skeleton width="48%" height={44} color="#E6E8EC" style={{ borderRadius: 999 }} />
+        <Skeleton width="48%" height={44} color="#E6E8EC" style={{ borderRadius: 999 }} />
+      </View>
+    </View>
+  );
+}
+
+function StateBlock({
+  actionLabel,
+  detail,
+  onAction,
+  title,
+}: {
+  actionLabel?: string;
+  detail: string;
+  onAction?: () => void;
+  title: string;
+}) {
+  return (
+    <View style={styles.state}>
+      <Text size="lg" weight="medium" style={styles.centerText}>
+        {title}
+      </Text>
+      <Text tone="text.secondary" style={styles.centerText}>
+        {detail}
+      </Text>
+      {actionLabel && onAction ? (
+        <Button variant="secondary" style={styles.retryButton} onPress={onAction}>
+          <Text size="lg" weight="medium" color="black">
+            {actionLabel}
+          </Text>
+        </Button>
+      ) : null}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    paddingHorizontal: 24,
+    backgroundColor: "white",
   },
   content: {
-    padding: 24,
-    gap: 16,
+    flexGrow: 1,
+    paddingBottom: 112,
+    gap: 18,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
+  header: {
+    marginTop: 28,
+    marginBottom: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  username: {
+    flex: 1,
+  },
+  menuButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#F0F3F4",
+  },
+  menuDots: {
+    marginTop: -8,
+    letterSpacing: 0,
+  },
+  sectionHeader: {
+    marginTop: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  counter: {
+    fontVariant: ["tabular-nums"],
+  },
+  list: {
+    gap: 14,
+  },
+  inviteCard: {
+    gap: 14,
+    padding: 16,
+    borderRadius: 24,
+    backgroundColor: "#F7F8FA",
+  },
+  inviteCopy: {
+    gap: 4,
+  },
+  inviteActions: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  inviteButton: {
+    flex: 1,
+    flexBasis: 0,
+    minHeight: 48,
+  },
+  acceptButton: {
+    backgroundColor: "#00B2FF",
+  },
+  state: {
+    minHeight: 136,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    padding: 18,
+    borderRadius: 24,
+    backgroundColor: "#F7F8FA",
+  },
+  centerText: {
     textAlign: "center",
   },
-  card: {
-    backgroundColor: "#fff",
-    padding: 24,
-    borderRadius: 12,
-    gap: 6,
+  retryButton: {
+    marginTop: 8,
   },
   cardButton: {
     position: "absolute",
     bottom: 24,
     right: 24,
-  },
-  greeting: {
-    fontSize: 20,
-    fontWeight: "600",
-  },
-  email: {
-    fontSize: 16,
-    color: "#666",
-  },
-  role: {
-    fontSize: 14,
-    color: "#999",
-    textTransform: "capitalize",
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-  },
-  counter: {
-    minWidth: 28,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 14,
-    overflow: "hidden",
-    backgroundColor: "#E7F0FF",
-    color: "#007AFF",
-    textAlign: "center",
-    fontWeight: "600",
-    fontVariant: ["tabular-nums"],
-  },
-  inviteState: {
-    minHeight: 88,
-    borderRadius: 12,
-    padding: 20,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-  },
-  stateText: {
-    fontSize: 15,
-    color: "#666",
-    textAlign: "center",
-  },
-  error: {
-    color: "#FF3B30",
-    textAlign: "center",
-  },
-  retryButton: {
-    backgroundColor: "#E7F0FF",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: "#007AFF",
-    fontWeight: "600",
-  },
-  inviteCard: {
-    backgroundColor: "#fff",
-    padding: 18,
-    borderRadius: 12,
-    gap: 10,
-  },
-  inviteTitle: {
-    fontSize: 17,
-    fontWeight: "600",
-  },
-  inviteLocation: {
-    fontSize: 14,
-    color: "#3A3A3C",
-    lineHeight: 20,
-  },
-  inviteMeta: {
-    gap: 3,
-  },
-  inviteDetail: {
-    fontSize: 13,
-    color: "#666",
-  },
-  actionError: {
-    fontSize: 14,
-    color: "#FF3B30",
-  },
-  actions: {
-    flexDirection: "row",
-    gap: 10,
-    paddingTop: 4,
-  },
-  actionButton: {
-    flex: 1,
-    minHeight: 44,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  rejectButton: {
-    backgroundColor: "#F2F2F7",
-  },
-  rejectButtonText: {
-    color: "#3A3A3C",
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  acceptButton: {
-    backgroundColor: "#007AFF",
-  },
-  acceptButtonText: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  button: {
-    backgroundColor: "#FF3B30",
-    padding: 16,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
   },
 });

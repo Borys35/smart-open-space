@@ -1,11 +1,14 @@
 import { BackButton } from "@/components/nav/back-button";
 import { useAuth } from "@/hooks/use-auth";
+import { cardKeys } from "@/hooks/use-cards";
 import { api } from "@/lib/api";
 import { getCardColor, getCardHash } from "@/lib/nfc";
 import { Card } from "@/pages/card-link/card";
 import { Button } from "@ssobkowski/rnui/button";
 import { CrossIcon, NfcIcon, UserIconFilled } from "@ssobkowski/rnui/icons";
 import { Text } from "@ssobkowski/rnui/text";
+import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { View } from "react-native";
 import NfcManager, { NfcTech } from "react-native-nfc-manager";
@@ -22,6 +25,13 @@ import { StyleSheet } from "react-native-unistyles";
 
 import type { TagEvent } from "react-native-nfc-manager";
 import type { EntryExitAnimationFunction } from "react-native-reanimated";
+
+interface LinkCardResponse {
+  card: {
+    uid: string;
+    active: boolean;
+  } | null;
+}
 
 const NFC_TECHS =
   process.env.EXPO_OS === "ios"
@@ -99,7 +109,9 @@ function formatError(error: unknown) {
 }
 
 export default function NfcCardScreen() {
+  const router = useRouter();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [status, setStatus] = useState<"scanning" | "linking" | "ready" | "error">("scanning");
   const [tag, setTag] = useState<TagEvent | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -134,11 +146,13 @@ export default function NfcCardScreen() {
 
       setTag(scannedTag);
       setStatus("linking");
-      await api.post("/api/credentials/cards", {
+      const credentials = await api.post<LinkCardResponse>("/api/credentials/cards", {
         card: {
           uid: scannedTag.id,
         },
       });
+      queryClient.setQueryData(cardKeys.linked(), credentials.card);
+      await queryClient.invalidateQueries({ queryKey: cardKeys.linked() });
       setStatus("ready");
     } catch (scanError) {
       setError(formatError(scanError));
@@ -146,7 +160,11 @@ export default function NfcCardScreen() {
     } finally {
       await NfcManager.cancelTechnologyRequest({ throwOnError: false });
     }
-  }, []);
+  }, [queryClient]);
+
+  const handleContinue = () => {
+    router.replace("/(protected)");
+  };
 
   const isReady = status === "ready";
   const cardHash = getCardHash(tag?.id);
@@ -177,9 +195,7 @@ export default function NfcCardScreen() {
             style={styles.objectiveText}
             exiting={FadeOut}
           >
-            {status === "linking"
-              ? "Putting your card online."
-              : "Hold your card flat against the back of your phone, near the middle."}
+            Hold your card flat against the back of your phone, near the middle.
           </Text>
         )}
         <Animated.View layout={LAYOUT_TRANSITION} style={styles.cardWrapper}>
@@ -229,18 +245,23 @@ export default function NfcCardScreen() {
         <NfcIcon size={32} color="#94969A" />
         {status === "error" && (
           <Button
-            variant="primary"
+            variant="secondary"
             style={styles.button}
             entering={CONTINUE_ENTER}
             onPress={scanCard}
           >
-            <Text size="lg" weight="medium" color="white">
-              Scan again
+            <Text size="lg" weight="medium" color="black">
+              Try Again
             </Text>
           </Button>
         )}
         {isReady && (
-          <Button variant="primary" style={[styles.button, buttonStyle]} entering={CONTINUE_ENTER}>
+          <Button
+            variant="primary"
+            style={[styles.button, buttonStyle]}
+            onPress={handleContinue}
+            entering={CONTINUE_ENTER}
+          >
             <Text size="lg" weight="medium" color="white">
               Continue
             </Text>
