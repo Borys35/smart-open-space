@@ -27,7 +27,9 @@ def serialize_open_space(open_space: OpenSpace):
         "longitude": open_space.longitude,
         "image_url": open_space.image_url,
         "opened_at": open_space.opened_at,
-        "closed_at": open_space.closed_at
+        "closed_at": open_space.closed_at,
+        "credits_per_hour": open_space.credits_per_hour,
+        "max_daily_hours": open_space.max_daily_hours
     }
 
 @router.get("", response_model=list[MobileOpenSpaceSummary])

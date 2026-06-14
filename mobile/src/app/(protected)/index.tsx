@@ -11,8 +11,8 @@ import { Skeleton } from "@ssobkowski/rnui/skeleton";
 import { Text } from "@ssobkowski/rnui/text";
 import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
-import { useEffect, useMemo, useRef } from "react";
-import { ActivityIndicator, ScrollView, View } from "react-native";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import { ActivityIndicator, RefreshControl, ScrollView, View } from "react-native";
 import Animated, { LinearTransition } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StyleSheet, useUnistyles } from "react-native-unistyles";
@@ -135,6 +135,10 @@ export default function Home() {
   const hasLinkedCard = Boolean(linkedCard.data);
   const shouldShowInvites =
     invitations.isPending || invitations.isError || (invitations.data?.length ?? 0) > 0;
+  const refreshInvites = useCallback(() => {
+    // oxlint-disable-next-line no-unused-vars
+    const _ = invitations.refetch();
+  }, [invitations]);
 
   const openCardScanner = () => {
     router.push("/nfc-card");
@@ -165,7 +169,16 @@ export default function Home() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.content}
+        refreshControl=<RefreshControl
+            refreshing={invitations.isRefetching}
+            onRefresh={refreshInvites}
+            tintColor={theme.colors.text.secondary}
+            colors={[theme.colors.text.secondary]}
+          />
+      >
         <View style={styles.header}>
           <Text header size="3xl" weight="medium" numberOfLines={1} style={styles.username}>
             {user.username}

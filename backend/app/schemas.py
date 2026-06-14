@@ -551,6 +551,8 @@ class ReservationOpenSpaceResponse(BaseModel):
     floor: int
     address: str | None = None
     place_name: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
     image_url: str | None = None
 
 class ReservationResponse(BaseModel):
@@ -820,6 +822,8 @@ class MobileOpenSpaceSummary(BaseModel):
     image_url: str | None = None
     opened_at: datetime | None = None
     closed_at: datetime | None = None
+    credits_per_hour: int
+    max_daily_hours: int
 
 class MobileOpenSpaceCreditsResponse(BaseModel):
     open_space_id: int

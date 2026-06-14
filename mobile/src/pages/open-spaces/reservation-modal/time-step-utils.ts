@@ -251,6 +251,7 @@ export function getStartSelectionForTargetOffset(
   targetOffset: number,
   currentEndOffset: number,
   availabilityRanges: AvailabilityMinuteRange[],
+  maxDurationMinutes: number | null = null,
 ) {
   "worklet";
   let bestStartOffset = Number.NaN;
@@ -263,11 +264,15 @@ export function getStartSelectionForTargetOffset(
       currentEndOffset <= range.endOffset
         ? currentEndOffset
         : range.endOffset;
+    const minStartOffset =
+      maxDurationMinutes !== null
+        ? Math.max(range.startOffset, endOffset - maxDurationMinutes)
+        : range.startOffset;
     const maxStartOffset = endOffset - MIN_DURATION_MINUTES;
 
-    if (range.startOffset > maxStartOffset) continue;
+    if (minStartOffset > maxStartOffset) continue;
 
-    const startOffset = clamp(targetOffset, range.startOffset, maxStartOffset);
+    const startOffset = clamp(targetOffset, minStartOffset, maxStartOffset);
     const distance = Math.abs(startOffset - targetOffset);
 
     if (distance < bestDistance) {
@@ -318,6 +323,7 @@ export function getEndSelectionForTargetOffset(
   targetOffset: number,
   currentStartOffset: number,
   availabilityRanges: AvailabilityMinuteRange[],
+  maxDurationMinutes: number | null = null,
 ) {
   "worklet";
   let bestStartOffset = Number.NaN;
@@ -331,10 +337,14 @@ export function getEndSelectionForTargetOffset(
         ? currentStartOffset
         : range.startOffset;
     const minEndOffset = startOffset + MIN_DURATION_MINUTES;
+    const maxEndOffset =
+      maxDurationMinutes !== null
+        ? Math.min(range.endOffset, startOffset + maxDurationMinutes)
+        : range.endOffset;
 
-    if (minEndOffset > range.endOffset) continue;
+    if (minEndOffset > maxEndOffset) continue;
 
-    const endOffset = clamp(targetOffset, minEndOffset, range.endOffset);
+    const endOffset = clamp(targetOffset, minEndOffset, maxEndOffset);
     const distance = Math.abs(endOffset - targetOffset);
 
     if (distance < bestDistance) {
@@ -357,6 +367,7 @@ export function getPreferredRange(
   startMinuteOfDay: number | null,
   endMinuteOfDay: number | null,
   timelineStartMinutes: number,
+  maxDurationMinutes: number | null = null,
 ) {
   const fallbackRange = availabilityRanges.reduce<AvailabilityMinuteRange | null>(
     (longest, range) => {
@@ -372,8 +383,19 @@ export function getPreferredRange(
     null,
   );
 
+  const cappedFallbackRange =
+    fallbackRange === null
+      ? null
+      : {
+          startOffset: fallbackRange.startOffset,
+          endOffset:
+            maxDurationMinutes !== null
+              ? Math.min(fallbackRange.endOffset, fallbackRange.startOffset + maxDurationMinutes)
+              : fallbackRange.endOffset,
+        };
+
   if (fallbackRange === null || startMinuteOfDay === null || endMinuteOfDay === null) {
-    return fallbackRange;
+    return cappedFallbackRange;
   }
 
   const startOffset = startMinuteOfDay - timelineStartMinutes;
@@ -382,10 +404,11 @@ export function getPreferredRange(
     (range) =>
       startOffset >= range.startOffset &&
       endOffset <= range.endOffset &&
-      endOffset - startOffset >= MIN_DURATION_MINUTES,
+      endOffset - startOffset >= MIN_DURATION_MINUTES &&
+      (maxDurationMinutes === null || endOffset - startOffset <= maxDurationMinutes),
   );
 
-  if (!storedRangeFits) return fallbackRange;
+  if (!storedRangeFits) return cappedFallbackRange;
 
   return { startOffset, endOffset };
 }
