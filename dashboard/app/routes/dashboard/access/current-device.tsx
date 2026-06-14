@@ -8,6 +8,7 @@ import { useOpenSpace } from "~/providers/OpenSpaceProvider";
 import UsersList, { type UserListItem } from "~/components/lists/users-list";
 import AddDevice from "./add-device";
 import { AddDeviceForm } from "~/components/forms/access/add-device-form";
+import { UpdateDeviceForm } from "~/components/forms/access/update-device-form";
 
 export const handle = {
     title: "Current Device",
@@ -55,25 +56,6 @@ export default function CurrentDevice() {
             .finally(() => setIsLoading(false))
     }, [activeOpenSpace?.id])
 
-    const handlePromoteUser = async (userId: number) => {
-        try {
-            const response = await fetch(`/api/dashboard/open-spaces/${activeOpenSpace?.id}/users/${userId}/promote`, {
-                method: "POST",
-                credentials: "include",
-                headers: { "Authorization": "Bearer " + localStorage.getItem("accessToken") },
-            })
-
-            if (!response.ok) {
-                const result = await response.json()
-                throw new Error(result.detail || "Failed to promote user")
-            }
-
-            setUsers(prev => prev.map(user => user.id === userId ? { ...user, role: "MANAGER" } : user))
-        } catch (err: any) {
-            setError(err.message)
-        }
-    }
-
     return (
         <div className="flex flex-col h-full w-full p-4 md:p-6 lg:p-8">
             <h1 className="text-2xl font-bold mb-6">Manage Access Device</h1>
@@ -93,6 +75,9 @@ export default function CurrentDevice() {
                             <p><strong>Device Name:</strong> {accessDevice.name}</p>
                             <p><strong>Device Key:</strong> {accessDevice.device_key}</p>
                             <p><strong>Status:</strong> {accessDevice.is_active ? "Active" : "Inactive"}</p>
+                            <div className="mx-auto w-full lg:w-lg self-center pt-8">
+                                <UpdateDeviceForm accessDevice={accessDevice} onFormSubmit={handleDeviceCreated} />
+                            </div>
                         </div>
                     ) : (
                         <div className="mx-auto w-full lg:w-lg self-center pt-8">

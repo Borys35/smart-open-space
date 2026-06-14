@@ -13,7 +13,7 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "~/components/ui/sidebar"
-import { GalleryVerticalEndIcon, AudioLinesIcon, TerminalIcon, TerminalSquareIcon, BookOpenIcon, Settings2Icon, FrameIcon, PieChartIcon, MapIcon, Workflow, HomeIcon } from "lucide-react"
+import { GalleryVerticalEndIcon, AudioLinesIcon, TerminalIcon, TerminalSquareIcon, BookOpenIcon, Settings2Icon, FrameIcon, PieChartIcon, MapIcon, Workflow, HomeIcon, IdCardLanyardIcon } from "lucide-react"
 import { useAuth } from "~/providers/AuthProvider"
 
 // This is sample data.
@@ -151,7 +151,7 @@ const data = {
       title: "Access",
       url: "#",
       icon: (
-        <Settings2Icon
+        <IdCardLanyardIcon
         />
       ),
       items: [
