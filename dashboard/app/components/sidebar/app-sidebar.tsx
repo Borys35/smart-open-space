@@ -156,12 +156,8 @@ const data = {
       ),
       items: [
         {
-          title: "All Devices",
-          url: "/access/devices",
-        },
-        {
-          title: "Add Device",
-          url: "/access/add-device",
+          title: "Manage Access Device",
+          url: "/access/device",
         },
       ],
     }

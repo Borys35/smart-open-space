@@ -29,8 +29,7 @@ export default [
                 route(":id", "routes/dashboard/reservations/details.tsx"),
             ]),
             ...prefix("access", [
-                route("add-device", "routes/dashboard/access/add-device.tsx"),
-                route("devices", "routes/dashboard/access/devices.tsx"),
+                route("device", "routes/dashboard/access/current-device.tsx"),
             ])
         ])
     ]),
