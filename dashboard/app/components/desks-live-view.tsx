@@ -124,7 +124,7 @@ export default function DesksLiveView() {
                                     <div
                                         key={desk.id}
                                         className={cn(
-                                            "absolute text-center rounded-lg flex items-center justify-center text-sm font-medium shadow-sm select-none",
+                                            "absolute text-center rounded-lg flex flex-col items-center justify-center text-sm font-medium shadow-sm select-none",
                                             liveOverlaps.has(desk.id)
                                                 ? "bg-red-100 border-2 border-dashed border-red-500 text-red-700 dark:bg-red-900/50 dark:border-red-500/80 dark:text-red-200"
                                                 : "bg-white border-2 border-slate-200 text-slate-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
@@ -137,6 +137,8 @@ export default function DesksLiveView() {
                                         }}
                                     >
                                         {desk.data}
+                                        <p className="text-[8px] text-foreground-muted">{desk.is_occupied ? "Occupied" : "Available"}</p>
+                                        {desk.next_reservation ? <p className="text-[8px]">Next reservationm starts: {new Date(desk.next_reservation.start_time).toLocaleDateString()}</p> : <p className="text-[8px]">No next reservations</p>}
                                     </div>
                                 ))}
                             </div>
