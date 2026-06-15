@@ -13,6 +13,14 @@ export interface MobileOpenSpaceSummary {
   image_url: string | null;
   opened_at: string | null;
   closed_at: string | null;
+  credits_per_hour: number;
+  max_daily_hours: number;
+}
+
+export interface MobileOpenSpaceCredits {
+  open_space_id: number;
+  credits_balance: number;
+  pending_penalty_credits: number;
 }
 
 export interface DeskAvailability {
@@ -58,6 +66,8 @@ export interface ReservationResponse {
     floor: number;
     address: string | null;
     place_name: string | null;
+    latitude: number | null;
+    longitude: number | null;
     image_url: string | null;
   };
   start_time: string;
@@ -90,6 +100,7 @@ function sortReservationsByDistanceFromNow(reservations: ReservationResponse[]) 
 export const openSpaceKeys = {
   list: (userId: number | null) => ["open-spaces", userId] as const,
   detail: (openSpaceId: number | null) => ["open-spaces", "detail", openSpaceId] as const,
+  credits: (openSpaceId: number | null) => ["open-spaces", "credits", openSpaceId] as const,
   availability: (openSpaceId: number | null, startTime: string, endTime: string) =>
     ["open-spaces", "availability", openSpaceId, startTime, endTime] as const,
   deskAvailabilityWindows: (deskId: number | null, date: string, minDurationMinutes: number) =>
@@ -109,6 +120,14 @@ export function useOpenSpaceDetails(openSpaceId: number | null) {
   return useQuery({
     queryKey: openSpaceKeys.detail(openSpaceId),
     queryFn: () => api.get<MobileOpenSpaceSummary>(`/api/open-spaces/${openSpaceId}`),
+    enabled: openSpaceId !== null,
+  });
+}
+
+export function useOpenSpaceCredits(openSpaceId: number | null) {
+  return useQuery({
+    queryKey: openSpaceKeys.credits(openSpaceId),
+    queryFn: () => api.get<MobileOpenSpaceCredits>(`/api/open-spaces/${openSpaceId}/credits`),
     enabled: openSpaceId !== null,
   });
 }
@@ -196,6 +215,7 @@ export function useCreateReservation() {
       api.post<ReservationResponse>("/api/reservations", data),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: openSpaceKeys.myReservations() });
+      await queryClient.invalidateQueries({ queryKey: ["open-spaces", "credits"] });
       await queryClient.invalidateQueries({ queryKey: ["desks", "availability-windows"] });
       await queryClient.invalidateQueries({ queryKey: ["open-spaces", "availability"] });
     },
@@ -209,6 +229,7 @@ export function useCancelReservation() {
     mutationFn: (reservationId: number) => api.delete<void>(`/api/reservations/${reservationId}`),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: openSpaceKeys.myReservations() });
+      await queryClient.invalidateQueries({ queryKey: ["open-spaces", "credits"] });
       await queryClient.invalidateQueries({ queryKey: ["desks", "availability-windows"] });
       await queryClient.invalidateQueries({ queryKey: ["open-spaces", "availability"] });
     },

@@ -5,12 +5,20 @@ import {
   useReservationPreferencesStore,
 } from "@/stores/reservation-preferences";
 import { Button } from "@ssobkowski/rnui/button";
+import { ChevronLeftIcon, ChevronRightIcon } from "@ssobkowski/rnui/icons";
 import { ModalHeader, ModalStepView } from "@ssobkowski/rnui/modal";
 import { Skeleton } from "@ssobkowski/rnui/skeleton";
 import { Text } from "@ssobkowski/rnui/text";
 import { useEffect, useMemo, useState } from "react";
-import { View } from "react-native";
-import { FadeIn, FadeOut } from "react-native-reanimated";
+import { View, type ColorValue } from "react-native";
+import Animated, {
+  FadeIn,
+  FadeOut,
+  interpolateColor,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { StyleSheet } from "react-native-unistyles";
 
 import type {
@@ -38,10 +46,17 @@ function getStartOfDay(date: Date) {
   return startOfDay;
 }
 
-function addDays(date: Date, days: number) {
-  const nextDate = new Date(date);
-  nextDate.setDate(nextDate.getDate() + days);
+function addMonths(date: Date, months: number) {
+  const nextDate = new Date(date.getFullYear(), date.getMonth() + months, 1);
   return nextDate;
+}
+
+function getStartOfMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function getDaysInMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
 }
 
 export function formatApiDate(date: Date) {
@@ -57,12 +72,63 @@ function parseApiDate(date: string) {
   return new Date(year, month - 1, day);
 }
 
-const INTL_DTF = new Intl.DateTimeFormat("en", {
-  weekday: "long",
+const MONTH_DTF = new Intl.DateTimeFormat("en", {
+  month: "long",
+  year: "numeric",
 });
 
-function formatDisplayDate(date: Date) {
-  return INTL_DTF.format(date);
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+interface CalendarDayButtonProps {
+  date: Date;
+  isPast: boolean;
+  isSelected: boolean;
+  onPress: (date: Date) => void;
+}
+
+function CalendarDayButton({ date, isPast, isSelected, onPress }: CalendarDayButtonProps) {
+  const selectionProgress = useSharedValue(isSelected ? 1 : 0);
+  const textColor = useSharedValue<ColorValue>(
+    isPast ? "#A7AAB0" : isSelected ? "#FFFFFF" : "#111827",
+  );
+
+  useEffect(() => {
+    selectionProgress.set(withTiming(isSelected ? 1 : 0, { duration: 180 }));
+    textColor.set(
+      withTiming(isPast ? "#A7AAB0" : isSelected ? "#FFFFFF" : "#111827", { duration: 180 }),
+    );
+  }, [isPast, isSelected, selectionProgress, textColor]);
+
+  const dayCircleStyle = useAnimatedStyle(() => {
+    return {
+      backgroundColor: interpolateColor(
+        selectionProgress.get(),
+        [0, 1],
+        ["rgba(17, 24, 39, 0)", "#111827"],
+      ),
+      transform: [{ scale: 0.92 + selectionProgress.get() * 0.08 }],
+    };
+  });
+
+  return (
+    <Button
+      disabled={isPast}
+      style={[styles.dayCell, styles.dayButton]}
+      onPress={() => onPress(date)}
+    >
+      <Animated.View style={[styles.dayCircle, dayCircleStyle]}>
+        <Text
+          willAnimate
+          color={textColor}
+          size="lg"
+          weight={isSelected ? "medium" : "regular"}
+          style={styles.dayNumber}
+        >
+          {date.getDate()}
+        </Text>
+      </Animated.View>
+    </Button>
+  );
 }
 
 export function ReservationDateStep({
@@ -76,6 +142,7 @@ export function ReservationDateStep({
   const [selectedDate, setSelectedDate] = useState(() =>
     parseApiDate(clampReservationDate(storedDate)),
   );
+  const [visibleMonth, setVisibleMonth] = useState(() => getStartOfMonth(selectedDate));
   const debouncedDate = useDebouncedValue(selectedDate, 350);
   const selectedApiDate = useMemo(() => formatApiDate(debouncedDate), [debouncedDate]);
   const isAutoFinder = deskId === null && desks.length > 0;
@@ -117,18 +184,40 @@ export function ReservationDateStep({
   const error = isAutoFinder
     ? desksAvailability.find((query) => query.isError)?.error
     : availability.error;
-  const isTodayOrEarlier = getStartOfDay(selectedDate) <= getStartOfDay(new Date());
+  const today = useMemo(() => getStartOfDay(new Date()), []);
+  const isCurrentMonthVisible = getStartOfMonth(visibleMonth) <= getStartOfMonth(today);
+  const calendarDays = useMemo(() => {
+    const firstDayOfMonth = getStartOfMonth(visibleMonth);
+    const leadingEmptyDays = firstDayOfMonth.getDay();
+    const daysInMonth = getDaysInMonth(visibleMonth);
 
-  const handleDateChange = (days: number) => {
-    setSelectedDate((date) => {
-      const nextDate = addDays(date, days);
+    return Array.from({ length: leadingEmptyDays + daysInMonth }, (_, index) => {
+      const day = index - leadingEmptyDays + 1;
 
-      if (getStartOfDay(nextDate) < getStartOfDay(new Date())) {
-        return date;
+      if (day < 1) {
+        return null;
       }
 
-      return nextDate;
+      return new Date(visibleMonth.getFullYear(), visibleMonth.getMonth(), day);
     });
+  }, [visibleMonth]);
+
+  const handleMonthChange = (months: number) => {
+    setVisibleMonth((month) => {
+      const nextMonth = addMonths(month, months);
+
+      if (getStartOfMonth(nextMonth) < getStartOfMonth(today)) {
+        return month;
+      }
+
+      return nextMonth;
+    });
+  };
+
+  const handleDateSelect = (date: Date) => {
+    if (getStartOfDay(date) < today) return;
+
+    setSelectedDate(date);
   };
 
   useEffect(() => {
@@ -143,25 +232,28 @@ export function ReservationDateStep({
 
       <View style={styles.dateStepper}>
         <Button
-          disabled={isTodayOrEarlier}
-          style={[styles.stepperButton, isTodayOrEarlier && styles.disabledStepperButton]}
-          onPress={() => handleDateChange(-1)}
+          disabled={isCurrentMonthVisible}
+          style={[styles.stepperButton, isCurrentMonthVisible && styles.disabledStepperButton]}
+          onPress={() => handleMonthChange(-1)}
         >
-          <Text color={isTodayOrEarlier ? "#A7AAB0" : "black"} size="2xl" weight="medium">
-            {"<"}
-          </Text>
+          <ChevronLeftIcon
+            width={24}
+            height={24}
+            strokeWidth={2}
+            color={isCurrentMonthVisible ? "#A7AAB0" : "black"}
+          />
         </Button>
 
         <View style={styles.dateLabel}>
           <Text
             willAnimate
-            key={`disp-${selectedDate.toISOString()}`}
+            key={`month-${visibleMonth.toISOString()}`}
             entering={FadeIn}
             exiting={FadeOut}
             size="lg"
             weight="medium"
           >
-            {formatDisplayDate(selectedDate)}
+            {MONTH_DTF.format(visibleMonth)}
           </Text>
           <Text
             willAnimate
@@ -175,11 +267,39 @@ export function ReservationDateStep({
           </Text>
         </View>
 
-        <Button style={styles.stepperButton} onPress={() => handleDateChange(1)}>
-          <Text size="2xl" weight="medium">
-            {">"}
-          </Text>
+        <Button style={styles.stepperButton} onPress={() => handleMonthChange(1)}>
+          <ChevronRightIcon width={24} height={24} strokeWidth={2} color="black" />
         </Button>
+      </View>
+
+      <View style={styles.calendar}>
+        {WEEKDAYS.map((weekday) => (
+          <View key={weekday} style={styles.weekdayCell}>
+            <Text size="xs" tone="text.secondary" weight="medium">
+              {weekday}
+            </Text>
+          </View>
+        ))}
+
+        {calendarDays.map((date, index) => {
+          if (!date) {
+            return <View key={`empty-${index}`} style={styles.dayCell} />;
+          }
+
+          const apiDate = formatApiDate(date);
+          const isSelected = apiDate === formatApiDate(selectedDate);
+          const isPast = getStartOfDay(date) < today;
+
+          return (
+            <CalendarDayButton
+              key={apiDate}
+              date={date}
+              isPast={isPast}
+              isSelected={isSelected}
+              onPress={handleDateSelect}
+            />
+          );
+        })}
       </View>
 
       <View style={styles.availabilityState}>
@@ -241,6 +361,38 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     gap: 2,
+  },
+  calendar: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    rowGap: 8,
+  },
+  weekdayCell: {
+    width: "14.2857%",
+    height: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dayCell: {
+    width: "14.2857%",
+    aspectRatio: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dayButton: {
+    backgroundColor: "transparent",
+  },
+  dayCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dayNumber: {
+    textAlign: "center",
+    includeFontPadding: false,
+    textAlignVertical: "center",
   },
   availabilityState: {
     minHeight: 34,

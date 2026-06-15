@@ -1,5 +1,6 @@
 import { useCancelReservation, type ReservationResponse } from "@/hooks/use-open-spaces";
 import { formatReservationTime } from "@/lib/fmt";
+import { hasFiniteCoordinates, openMapsUrl } from "@/lib/maps";
 import { Button } from "@ssobkowski/rnui/button";
 import {
   ArrowUpRightIcon,
@@ -13,6 +14,7 @@ import {
 import { Modal, ModalHeader, ModalStepView, useModal } from "@ssobkowski/rnui/modal";
 import { Text, TextMorph } from "@ssobkowski/rnui/text";
 import { getCalendars, EntityTypes, requestCalendarPermissions } from "expo-calendar";
+import { useRouter } from "expo-router";
 import { View } from "react-native";
 import Animated, { FadeIn, FadeOut, LinearTransition } from "react-native-reanimated";
 import { StyleSheet, useUnistyles } from "react-native-unistyles";
@@ -28,6 +30,7 @@ interface ReservationDetailsModalProps {
 }
 
 export function ReservationDetailsModal({ ref, reservation }: ReservationDetailsModalProps) {
+  const router = useRouter();
   const { theme } = useUnistyles();
   const m = useModal();
   const cancelReservation = useCancelReservation();
@@ -37,6 +40,10 @@ export function ReservationDetailsModal({ ref, reservation }: ReservationDetails
     reservation.open_space.place_name !== null &&
     reservation.open_space.address !== null &&
     `${reservation!.open_space.place_name}, ${reservation!.open_space.address}`;
+  const hasCoordinates = hasFiniteCoordinates(
+    reservation?.open_space.latitude,
+    reservation?.open_space.longitude,
+  );
 
   const handleAddToCalendar = async () => {
     if (!reservation) return;
@@ -64,6 +71,36 @@ export function ReservationDetailsModal({ ref, reservation }: ReservationDetails
     }
   };
 
+  const handleOpenSpaceLink = () => {
+    if (!reservation) return;
+
+    m.dismiss();
+    router.push({
+      pathname: "/spaces/[id]",
+      params: { id: reservation.open_space.id },
+    });
+  };
+
+  const handleOpenLocation = async () => {
+    if (!reservation || !hasCoordinates) return;
+
+    const { latitude, longitude } = reservation.open_space;
+    if (
+      typeof latitude !== "number" ||
+      typeof longitude !== "number" ||
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude)
+    ) {
+      return;
+    }
+
+    await openMapsUrl(
+      latitude,
+      longitude,
+      location || reservation.open_space.name,
+    );
+  };
+
   const handleOpenCancelStep = () => {
     m.goToStep(1);
   };
@@ -75,7 +112,7 @@ export function ReservationDetailsModal({ ref, reservation }: ReservationDetails
       await cancelReservation.mutateAsync(reservation.id);
       m.dismiss();
     } catch (error) {
-      // setCancelError(error instanceof ApiError ? error.message : "Please try again in a moment.");
+      console.error("Failed to cancel reservation:", error);
     }
   };
 
@@ -93,7 +130,7 @@ export function ReservationDetailsModal({ ref, reservation }: ReservationDetails
       </View>
 
       <ModalStepView index={0} style={styles.loose}>
-        <Button style={styles.spaceButton}>
+        <Button onPress={handleOpenSpaceLink} style={styles.spaceButton}>
           <Text size="xl" weight="medium" style={styles.spaceName}>
             {reservation.open_space.name}
           </Text>
@@ -102,7 +139,11 @@ export function ReservationDetailsModal({ ref, reservation }: ReservationDetails
 
         <View style={styles.details}>
           {location && (
-            <View style={styles.detailRow}>
+            <Button
+              disabled={!hasCoordinates}
+              onPress={handleOpenLocation}
+              style={[styles.detailRow, hasCoordinates && styles.locationRow]}
+            >
               <MapPinStroke
                 width={18}
                 height={18}
@@ -112,7 +153,14 @@ export function ReservationDetailsModal({ ref, reservation }: ReservationDetails
               <Text tone="text.secondary" style={styles.detailText}>
                 {location}
               </Text>
-            </View>
+              {hasCoordinates && (
+                <ArrowUpRightIcon
+                  size={16}
+                  strokeWidth={2}
+                  color={theme.colors.text.secondary}
+                />
+              )}
+            </Button>
           )}
 
           <View style={styles.detailRow}>
@@ -218,11 +266,14 @@ const styles = StyleSheet.create((theme) => ({
     alignItems: "center",
     gap: 8,
   },
+  locationRow: {
+    minHeight: 32,
+  },
   warningIcon: {
     alignSelf: "center",
   },
   detailText: {
-    flex: 1,
+    flexShrink: 1,
   },
   actionButton: {
     flex: 1,

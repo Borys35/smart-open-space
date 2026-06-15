@@ -20,6 +20,9 @@ interface ReservationModalProps {
   deskId: number | null;
   deskLabel?: string | null;
   desks?: Pick<DeskAvailability, "id" | "data">[];
+  creditsPerHour: number;
+  creditsBalance: number | null;
+  maxDailyHours: number;
   isConfirming?: boolean;
   onConfirm: (selection: ReservationTimeSelection) => void;
 }
@@ -29,6 +32,9 @@ export function ReservationModal({
   deskId,
   deskLabel,
   desks,
+  creditsPerHour,
+  creditsBalance,
+  maxDailyHours,
   isConfirming,
   onConfirm,
 }: ReservationModalProps) {
@@ -51,6 +57,9 @@ export function ReservationModal({
         <ReservationTimeStep
           windows={dateSelection?.windows ?? []}
           deskWindows={dateSelection?.deskWindows ?? []}
+          creditsPerHour={creditsPerHour}
+          creditsBalance={creditsBalance}
+          maxDailyHours={maxDailyHours}
           isConfirming={isConfirming}
           onConfirm={onConfirm}
         />

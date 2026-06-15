@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.datetime_utils import as_utc, utc_now
 from app.dependencies import get_db, get_current_user
 from app.models import User, Invitation, Membership, OpenSpace
+from app.routers.mobile.open_spaces import serialize_open_space
 from app.schemas import InviteResponse
 
 router = APIRouter(prefix="/api/invites", tags=["mobile-invites"])
@@ -53,19 +54,7 @@ def get_my_invites(
             "space_id": invite.open_space_id,
             "invited_email": invite.invited_email,
             "status": invite.status,
-            "open_space": {
-                "id": open_space.id,
-                "name": open_space.name,
-                "building": open_space.building,
-                "floor": open_space.floor,
-                "address": open_space.address,
-                "place_name": open_space.place_name,
-                "latitude": open_space.latitude,
-                "longitude": open_space.longitude,
-                "image_url": open_space.image_url,
-                "opened_at": open_space.opened_at,
-                "closed_at": open_space.closed_at
-            }
+            "open_space": serialize_open_space(open_space),
         })
 
     return result

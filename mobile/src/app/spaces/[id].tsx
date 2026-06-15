@@ -4,13 +4,20 @@ import {
   type MobileOpenSpaceSummary,
   useCreateReservation,
   useDeskAvailability,
+  useOpenSpaceCredits,
   useOpenSpaceDetails,
 } from "@/hooks/use-open-spaces";
 import { formatSchedule, getTodayScheduleWindow } from "@/lib/fmt";
+import { hasFiniteCoordinates, openMapsUrl } from "@/lib/maps";
 import { DEFAULT_OPEN_SPACE_IMAGE_URL } from "@/lib/open-space-images";
 import { ReservationModal } from "@/pages/open-spaces/reservation-modal";
 import { Button } from "@ssobkowski/rnui/button";
-import { ClockIconStroke, MapPinStroke } from "@ssobkowski/rnui/icons";
+import {
+  ArrowUpRightIcon,
+  ClockIconStroke,
+  CoinIconStroke,
+  MapPinStroke,
+} from "@ssobkowski/rnui/icons";
 import { Skeleton } from "@ssobkowski/rnui/skeleton";
 import { Text } from "@ssobkowski/rnui/text";
 import { Image } from "expo-image";
@@ -41,6 +48,18 @@ function getLocation(openSpace: MobileOpenSpaceSummary) {
   ]
     .filter(Boolean)
     .join(" ∙ ");
+}
+
+function getMapLabel(openSpace: MobileOpenSpaceSummary) {
+  return [openSpace.place_name, openSpace.address].filter(Boolean).join(", ") || openSpace.name;
+}
+
+function formatCreditsPerHour(creditsPerHour: number) {
+  return `${creditsPerHour} ${creditsPerHour === 1 ? "credit" : "credits"} / hour`;
+}
+
+function getCreditCost(durationMinutes: number, creditsPerHour: number) {
+  return Math.ceil((durationMinutes / 60) * creditsPerHour);
 }
 
 function DeskCardSkeleton() {
@@ -81,6 +100,7 @@ export default function OpenSpaceDetails() {
   const openSpaceId = parseOpenSpaceId(params.id);
   const routeImageUrl = Array.isArray(params.imageUrl) ? params.imageUrl[0] : params.imageUrl;
   const openSpace = useOpenSpaceDetails(openSpaceId);
+  const credits = useOpenSpaceCredits(openSpaceId);
   const availabilityWindow = useMemo(
     () => getTodayAvailabilityWindow(openSpace.data),
     [openSpace.data],
@@ -91,12 +111,43 @@ export default function OpenSpaceDetails() {
     availabilityWindow.endTime,
   );
   const heroImageUrl = openSpace.data?.image_url ?? routeImageUrl ?? DEFAULT_OPEN_SPACE_IMAGE_URL;
+  const hasCoordinates = hasFiniteCoordinates(openSpace.data?.latitude, openSpace.data?.longitude);
+
+  const handleOpenLocation = async () => {
+    if (!openSpace.data || !hasCoordinates) return;
+
+    const { latitude, longitude } = openSpace.data;
+    if (
+      typeof latitude !== "number" ||
+      typeof longitude !== "number" ||
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude)
+    ) {
+      return;
+    }
+
+    await openMapsUrl(latitude, longitude, getMapLabel(openSpace.data));
+  };
 
   const handleReservationConfirm = async (selection: ReservationTimeSelection) => {
     const deskId = selection.deskId ?? selectedDesk?.id ?? null;
 
     if (deskId === null) {
       Alert.alert("No desk available", "Try a different time window.");
+      return;
+    }
+
+    const creditCost = getCreditCost(
+      selection.durationMinutes,
+      openSpace.data?.credits_per_hour ?? 0,
+    );
+    const creditsBalance = credits.data?.credits_balance ?? null;
+
+    if (creditsBalance !== null && creditCost > creditsBalance) {
+      Alert.alert(
+        "Not enough credits",
+        `This reservation costs ${creditCost} credits, but you have ${creditsBalance} available.`,
+      );
       return;
     }
 
@@ -145,100 +196,135 @@ export default function OpenSpaceDetails() {
 
   return (
     <>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        <Image source={heroImageUrl} style={styles.hero} contentFit="cover" />
-        <BackButton style={styles.backButton} />
+      <View style={styles.container}>
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          <Image source={heroImageUrl} style={styles.hero} contentFit="cover" />
 
-        <View style={styles.content}>
-          <View style={styles.header}>
-            <Text size="2xl" weight="medium">
-              {openSpace.data.name}
-            </Text>
-            <Text size="lg" tone="text.secondary">
-              {getLocation(openSpace.data)}
-            </Text>
-          </View>
+          <View style={styles.content}>
+            <View style={styles.header}>
+              <Text size="2xl" weight="medium">
+                {openSpace.data.name}
+              </Text>
+              <Text size="lg" tone="text.secondary">
+                {getLocation(openSpace.data)}
+              </Text>
+            </View>
 
-          <View style={styles.details}>
-            {openSpace.data.opened_at && openSpace.data.closed_at && (
+            <View style={styles.details}>
+              {openSpace.data.opened_at && openSpace.data.closed_at && (
+                <View style={styles.detailRow}>
+                  <ClockIconStroke
+                    width={18}
+                    height={18}
+                    strokeWidth={2}
+                    color={theme.colors.text.secondary}
+                  />
+                  <Text tone="text.secondary">
+                    {formatSchedule(openSpace.data.opened_at, openSpace.data.closed_at)}
+                  </Text>
+                </View>
+              )}
+              {openSpace.data.address && (
+                <Button
+                  disabled={!hasCoordinates}
+                  onPress={handleOpenLocation}
+                  style={[styles.detailRow, hasCoordinates && styles.locationRow]}
+                >
+                  <MapPinStroke
+                    width={18}
+                    height={18}
+                    strokeWidth={2}
+                    color={theme.colors.text.secondary}
+                  />
+                  <Text tone="text.secondary" style={styles.detailText}>
+                    {openSpace.data.address}
+                  </Text>
+                  {hasCoordinates && (
+                    <ArrowUpRightIcon
+                      size={16}
+                      strokeWidth={2}
+                      color={theme.colors.text.secondary}
+                    />
+                  )}
+                </Button>
+              )}
               <View style={styles.detailRow}>
-                <ClockIconStroke
-                  width={16}
-                  height={16}
-                  strokeWidth={2}
-                  color={theme.colors.text.secondary}
-                />
-                <Text tone="text.secondary">
-                  {formatSchedule(openSpace.data.opened_at, openSpace.data.closed_at)}
-                </Text>
-              </View>
-            )}
-            {openSpace.data.address && (
-              <View style={styles.detailRow}>
-                <MapPinStroke
+                <CoinIconStroke
                   width={18}
                   height={18}
                   strokeWidth={2}
                   color={theme.colors.text.secondary}
                 />
-                <Text tone="text.secondary">{openSpace.data.address}</Text>
+                <Text tone="text.secondary">
+                  {formatCreditsPerHour(openSpace.data.credits_per_hour)}
+                </Text>
               </View>
-            )}
-          </View>
+            </View>
 
-          <View style={styles.section}>
-            <Text size="xl" weight="medium">
-              Desks
-            </Text>
+            <View style={styles.section}>
+              <Text size="xl" weight="medium">
+                Desks
+              </Text>
 
-            <View style={styles.deskList}>
-              {availability.isPending ? (
-                <>
-                  <DeskCardSkeleton />
-                  <DeskCardSkeleton />
-                  <DeskCardSkeleton />
-                  <DeskCardSkeleton />
-                </>
-              ) : availability.isError ? (
-                <Text color="#EC6A5B">{availability.error.message}</Text>
-              ) : availability.data.length === 0 ? (
-                <Text tone="text.secondary">No desks found for this open space.</Text>
-              ) : (
-                availability.data.map((desk) => (
-                  <DeskCard
-                    key={desk.id}
-                    desk={desk}
-                    onPress={() => {
-                      setSelectedDesk(desk);
-                      modalRef.current?.present();
-                    }}
-                  />
-                ))
-              )}
+              <View style={styles.deskList}>
+                {availability.isPending ? (
+                  <>
+                    <DeskCardSkeleton />
+                    <DeskCardSkeleton />
+                    <DeskCardSkeleton />
+                    <DeskCardSkeleton />
+                  </>
+                ) : availability.isError ? (
+                  <Text color="#EC6A5B">{availability.error.message}</Text>
+                ) : availability.data.length === 0 ? (
+                  <Text tone="text.secondary">No desks found for this open space.</Text>
+                ) : (
+                  availability.data.map((desk) => (
+                    <DeskCard
+                      key={desk.id}
+                      desk={desk}
+                      onPress={() => {
+                        setSelectedDesk(desk);
+                        modalRef.current?.present();
+                      }}
+                    />
+                  ))
+                )}
+              </View>
             </View>
           </View>
-        </View>
-      </ScrollView>
-      <View style={styles.finderFooter}>
-        <Button
-          variant="primary"
-          disabled={!availability.data || availability.data.length === 0}
-          style={styles.finderButton}
-          onPress={() => {
-            setSelectedDesk(null);
-            modalRef.current?.present();
-          }}
-        >
-          <Text color="white" size="lg" weight="medium">
-            Find a desk for me
+        </ScrollView>
+        <BackButton style={styles.backButton} />
+        <View style={styles.creditsPill}>
+          <CoinIconStroke width={16} height={16} strokeWidth={2} color="black" />
+          <Text color="black" weight="medium">
+            {credits.data ? `${credits.data.credits_balance} credits` : "..."}
           </Text>
-        </Button>
+        </View>
+        <View style={styles.finderFooter}>
+          <Button
+            variant="primary"
+            disabled={!availability.data || availability.data.length === 0}
+            style={styles.finderButton}
+            onPress={() => {
+              setSelectedDesk(null);
+              modalRef.current?.present();
+            }}
+          >
+            <Text color="white" size="lg" weight="medium">
+              Find a desk for me
+            </Text>
+          </Button>
+        </View>
       </View>
       <ReservationModal
         ref={modalRef}
         deskId={selectedDesk?.id ?? null}
         deskLabel={selectedDesk?.data}
         desks={selectedDesk === null ? availability.data : undefined}
+        creditsPerHour={openSpace.data.credits_per_hour}
+        creditsBalance={credits.data?.credits_balance ?? null}
+        maxDailyHours={openSpace.data.max_daily_hours}
         isConfirming={createReservation.isPending}
         onConfirm={handleReservationConfirm}
       />
@@ -251,6 +337,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "white",
   },
+  scrollView: {
+    flex: 1,
+    backgroundColor: "white",
+  },
   hero: {
     height: 290,
     overflow: "hidden",
@@ -260,6 +350,20 @@ const styles = StyleSheet.create({
     backgroundColor: "#EDEDEF",
     top: 64,
     left: 24,
+  },
+  creditsPill: {
+    position: "absolute",
+    top: 64,
+    right: 24,
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 6,
+    minHeight: 40,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: "white",
+    boxShadow: "0 6px 18px rgba(0, 0, 0, 0.16)",
   },
   content: {
     padding: 24,
@@ -276,6 +380,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+  },
+  locationRow: {
+    minHeight: 32,
+  },
+  detailText: {
+    flexShrink: 1,
   },
   section: {
     gap: 12,

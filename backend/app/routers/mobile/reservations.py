@@ -43,6 +43,8 @@ def serialize_reservation(reservation: Reservation):
             "floor": open_space.floor,
             "address": open_space.address,
             "place_name": open_space.place_name,
+            "latitude": open_space.latitude,
+            "longitude": open_space.longitude,
             "image_url": open_space.image_url,
         } if open_space else None,
         "start_time": as_utc(reservation.start_time),
